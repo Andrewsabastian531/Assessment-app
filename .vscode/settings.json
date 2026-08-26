@@ -1,0 +1,7 @@
+{
+  // Use the TypeScript version pinned in this repo rather than the one bundled
+  // with the editor. Without this the editor can report errors (and accept
+  // options) that the project's own tsc does not, which is confusing to debug.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}
