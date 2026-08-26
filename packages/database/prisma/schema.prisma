@@ -1,0 +1,367 @@
+// VedaAI — AI-powered exam grading
+// PostgreSQL + pgvector. Vector columns are declared as Unsupported() because
+// Prisma has no native vector type; they are created by a migration and queried
+// with $queryRaw for cosine similarity search.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
+}
+
+/* ------------------------------ identity ------------------------------ */
+
+enum UserRole {
+  TEACHER
+  ADMIN
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  city      String?
+  crestUrl  String?
+  createdAt DateTime @default(now())
+
+  users       User[]
+  assessments Assessment[]
+
+  @@map("schools")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String?
+  role         UserRole @default(TEACHER)
+  avatarUrl    String?
+  schoolId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school      School?        @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  assessments Assessment[]
+  overrides   Override[]
+  accounts    OAuthAccount[]
+
+  @@index([schoolId])
+  @@map("users")
+}
+
+/// Present so Google / GitHub sign-in can be enabled later without a migration.
+model OAuthAccount {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  refreshToken      String?
+  accessToken       String?
+  expiresAt         Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+/* ----------------------------- assessments ---------------------------- */
+
+enum AssessmentStatus {
+  DRAFT
+  EXTRACTING
+  MAPPED
+  GRADING
+  GRADED
+  FAILED
+}
+
+model Assessment {
+  id        String           @id @default(cuid())
+  title     String
+  subject   String?
+  grade     String?
+  status    AssessmentStatus @default(DRAFT)
+  teacherId String
+  schoolId  String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  teacher     User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school      School?      @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  assets      Asset[]
+  questions   Question[]
+  submissions Submission[]
+  jobs        Job[]
+
+  @@index([teacherId])
+  @@index([schoolId, status])
+  @@map("assessments")
+}
+
+enum AssetKind {
+  QUESTION_PAPER
+  ANSWER_SHEET
+}
+
+/// One uploaded file in R2. Backs the file chips on the upload screen.
+model Asset {
+  id           String    @id @default(cuid())
+  kind         AssetKind
+  storageKey   String    @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  pageCount    Int?
+  uploaded     Boolean   @default(false)
+  assessmentId String
+  createdAt    DateTime  @default(now())
+
+  assessment  Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([assessmentId, kind])
+  @@map("assets")
+}
+
+/* ------------------------------ rubric -------------------------------- */
+
+enum QuestionType {
+  MCQ
+  SHORT_ANSWER
+  LONG_ANSWER
+  MATH_DERIVATION
+  DIAGRAM
+}
+
+model Question {
+  id             String       @id @default(cuid())
+  assessmentId   String
+  parentId       String?
+  label          String
+  text           String       @db.Text
+  type           QuestionType @default(SHORT_ANSWER)
+  maxMarks       Float
+  orderIndex     Int
+  sourcePage     Int?
+  sourceBBox     Json?
+  expectedAnswer String?      @db.Text
+  /// bge-small-en-v1.5 produces 384 dimensions. If you switch embedding models,
+  /// change this AND the matching migration.
+  embedding      Unsupported("vector(384)")?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assessment  Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  parent      Question?         @relation("SubQuestions", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Question[]        @relation("SubQuestions")
+  criteria    RubricCriterion[]
+  regions     AnswerRegion[]
+  evaluations Evaluation[]
+
+  @@index([assessmentId, orderIndex])
+  @@index([parentId])
+  @@map("questions")
+}
+
+model RubricCriterion {
+  id          String @id @default(cuid())
+  questionId  String
+  description String @db.Text
+  marks       Float
+  orderIndex  Int
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, orderIndex])
+  @@map("rubric_criteria")
+}
+
+/* ---------------------------- submissions ----------------------------- */
+
+enum SubmissionStatus {
+  UPLOADED
+  PROCESSING
+  READY_FOR_REVIEW
+  FINALIZED
+  FAILED
+}
+
+model Submission {
+  id            String           @id @default(cuid())
+  assessmentId  String
+  assetId       String
+  studentName   String?
+  studentRollNo String?
+  status        SubmissionStatus @default(UPLOADED)
+  totalAwarded  Float?
+  totalMax      Float?
+  finalizedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  assessment  Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  asset       Asset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  pages       SubmissionPage[]
+  evaluations Evaluation[]
+  jobs        Job[]
+
+  @@index([assessmentId, status])
+  @@map("submissions")
+}
+
+/// One rasterised page image. width/height are the pixel dimensions that the
+/// normalised bounding boxes are relative to.
+model SubmissionPage {
+  id           String @id @default(cuid())
+  submissionId String
+  pageIndex    Int
+  imageKey     String
+  width        Int
+  height       Int
+
+  submission Submission     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  regions    AnswerRegion[]
+
+  @@unique([submissionId, pageIndex])
+  @@map("submission_pages")
+}
+
+/// A detected block on a page. Rows with questionId set become the green boxes.
+model AnswerRegion {
+  id             String                      @id @default(cuid())
+  pageId         String
+  questionId     String?
+  bbox           Json
+  transcript     String                      @db.Text
+  isPrintedLabel Boolean                     @default(false)
+  confidence     Float                       @default(0)
+  embedding      Unsupported("vector(384)")?
+  createdAt      DateTime                    @default(now())
+
+  page            SubmissionPage   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  question        Question?        @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  evaluationSteps EvaluationStep[]
+
+  @@index([pageId])
+  @@index([questionId])
+  @@map("answer_regions")
+}
+
+/* ----------------------------- evaluation ----------------------------- */
+
+enum EvaluationVerdict {
+  CORRECT
+  PARTIAL
+  INCORRECT
+  UNATTEMPTED
+}
+
+model Evaluation {
+  id           String            @id @default(cuid())
+  submissionId String
+  questionId   String
+  aiMarks      Float
+  awardedMarks Float
+  maxMarks     Float
+  isOverridden Boolean           @default(false)
+  verdict      EvaluationVerdict
+  feedback     String            @db.Text
+  confidence   Float             @default(0)
+  modelId      String?
+  tokensIn     Int?
+  tokensOut    Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  submission Submission       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question   Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  steps      EvaluationStep[]
+  overrides  Override[]
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+  @@map("evaluations")
+}
+
+model EvaluationStep {
+  id           String  @id @default(cuid())
+  evaluationId String
+  orderIndex   Int
+  description  String  @db.Text
+  /// Negative = deduction, positive = credit.
+  marksDelta   Float
+  regionId     String?
+
+  evaluation Evaluation    @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  region     AnswerRegion? @relation(fields: [regionId], references: [id], onDelete: SetNull)
+
+  @@index([evaluationId, orderIndex])
+  @@map("evaluation_steps")
+}
+
+/// Audit trail for every manual mark change a teacher makes.
+model Override {
+  id            String   @id @default(cuid())
+  evaluationId  String
+  userId        String
+  previousMarks Float
+  newMarks      Float
+  note          String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([evaluationId])
+  @@map("overrides")
+}
+
+/* -------------------------------- jobs -------------------------------- */
+
+enum JobType {
+  INGEST
+  QUESTION_EXTRACTION
+  LAYOUT_ANALYSIS
+  MAPPING
+  EVALUATION
+  AGGREGATION
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Job {
+  id           String    @id @default(cuid())
+  bullJobId    String?
+  type         JobType
+  status       JobStatus @default(QUEUED)
+  stage        String?
+  progress     Int       @default(0)
+  error        String?   @db.Text
+  assessmentId String?
+  submissionId String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assessment Assessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  submission Submission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([assessmentId])
+  @@index([status])
+  @@map("jobs")
+}

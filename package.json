@@ -1,0 +1,28 @@
+{
+  "name": "vedaai",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": { "node": ">=20.11.0" },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\"",
+    "db:generate": "pnpm --filter @vedaai/database generate",
+    "db:migrate": "pnpm --filter @vedaai/database migrate",
+    "db:push": "pnpm --filter @vedaai/database push",
+    "db:studio": "pnpm --filter @vedaai/database studio",
+    "db:seed": "pnpm --filter @vedaai/database seed",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:reset": "docker compose down -v"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
