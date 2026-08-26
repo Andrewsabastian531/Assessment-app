@@ -181,6 +181,7 @@ export class AiEngineService implements OnModuleInit {
           this.config.get<string>('GOOGLE_AI_API_KEY', ''),
           timeoutMs,
           maxRetries,
+          this.config.get<number>('EMBEDDING_DIMENSIONS', 768),
         );
 
       case 'openrouter':

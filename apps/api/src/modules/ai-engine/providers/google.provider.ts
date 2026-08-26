@@ -26,8 +26,8 @@ export class GoogleVlmProvider implements VlmProvider {
     private readonly apiKey: string,
     private readonly timeoutMs: number,
     private readonly maxRetries: number,
-  ) {
-  }
+    private readonly embeddingDimensions: number,
+  ) {}
 
   async complete<T>(request: VlmRequest<T>): Promise<VlmResponse<T>> {
     const startedAt = Date.now();
@@ -89,6 +89,9 @@ export class GoogleVlmProvider implements VlmProvider {
         requests: texts.map((text) => ({
           model: `models/${model}`,
           content: { parts: [{ text }] },
+          // gemini-embedding-001 returns 3072 dimensions unless asked otherwise.
+          // The pgvector column is fixed-width, so this must be explicit.
+          outputDimensionality: this.embeddingDimensions,
         })),
       },
     );
@@ -97,6 +100,15 @@ export class GoogleVlmProvider implements VlmProvider {
     if (!embeddings || embeddings.length !== texts.length) {
       throw new Error(
         `Expected ${texts.length} embeddings, received ${embeddings?.length ?? 0}`,
+      );
+    }
+
+    const width = embeddings[0]?.length ?? 0;
+    if (width !== this.embeddingDimensions) {
+      throw new Error(
+        `Embedding model ${model} returned ${width} dimensions but the database ` +
+          `column expects ${this.embeddingDimensions}. Set EMBEDDING_DIMENSIONS to ` +
+          `match and run a Prisma migration, or pick a model of the right width.`,
       );
     }
     return embeddings;
