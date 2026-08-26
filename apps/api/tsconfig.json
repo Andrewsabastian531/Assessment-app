@@ -1,22 +1,17 @@
 {
   "extends": "@vedaai/typescript-config/nestjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
+    // See apps/web/tsconfig.json — `baseUrl` is omitted deliberately so local
+    // folders cannot shadow node_modules. The Nest CLI rewrites these aliases
+    // to relative requires at build time, so the emitted JS has no aliases in it.
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
     "outDir": "./dist",
+    "rootDir": "./src",
     "declaration": false,
-    "declarationMap": false,
-    "rootDir": "./src"
+    "declarationMap": false
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

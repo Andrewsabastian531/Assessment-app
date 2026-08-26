@@ -1,9 +1,15 @@
 {
   "extends": "@vedaai/typescript-config/nextjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] }
+    // No `baseUrl`. Setting it makes every bare specifier resolve against this
+    // directory first, so a local folder can silently shadow a real package
+    // (e.g. `src/sonner/` would win over the `sonner` dependency). Since
+    // TypeScript 4.4 `paths` no longer needs it — entries below are resolved
+    // relative to this file.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".next", "dist"]
 }
