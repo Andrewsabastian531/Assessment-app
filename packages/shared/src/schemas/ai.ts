@@ -91,10 +91,10 @@ export type GradingResult = z.infer<typeof gradingResultSchema>;
  * Provider abstraction — lets us swap free/paid VLMs without code changes
  * ------------------------------------------------------------------ */
 
-export const AI_PROVIDERS = ['openrouter', 'google', 'anthropic', 'openai', 'ollama'] as const;
+export const AI_PROVIDERS = ['google', 'openrouter', 'opencode-zen', 'anthropic', 'openai', 'ollama'] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
-export const EMBEDDING_PROVIDERS = ['local', 'google', 'voyage', 'openai'] as const;
+export const EMBEDDING_PROVIDERS = ['google', 'local', 'voyage', 'openai'] as const;
 export type EmbeddingProvider = (typeof EMBEDDING_PROVIDERS)[number];
 
 export const aiUsageSchema = z.object({

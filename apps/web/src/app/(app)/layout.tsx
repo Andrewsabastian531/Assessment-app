@@ -1,11 +1,16 @@
+import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/shell/app-shell';
-import { getCurrentIdentity } from '@/lib/current-user';
+import { getSession } from '@/lib/session';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, school } = await getCurrentIdentity();
+  const session = await getSession();
+  if (!session) redirect('/sign-in');
 
   return (
-    <AppShell user={user} school={school}>
+    <AppShell
+      user={{ name: session.name, avatarUrl: session.avatarUrl }}
+      school={session.school}
+    >
       {children}
     </AppShell>
   );

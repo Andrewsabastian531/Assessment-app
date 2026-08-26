@@ -23,7 +23,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 /** Number of dimensions the embedding columns expect. Must match schema.prisma. */
-export const EMBEDDING_DIMENSIONS = 384;
+export const EMBEDDING_DIMENSIONS = 768;
 
 /**
  * pgvector literals have to be interpolated as strings — Prisma cannot bind a

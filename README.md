@@ -75,10 +75,16 @@ pnpm infra:up          # postgres(pgvector) + redis + minio, all on localhost
 
 | Service | URL | Credentials |
 |---|---|---|
-| Postgres | `localhost:5432` | `vedaai` / `vedaai` |
-| Redis | `localhost:6379` | — |
-| MinIO API | `http://localhost:9000` | `vedaai` / `vedaai-secret` |
-| MinIO console | `http://localhost:9001` | same |
+| Postgres | `localhost:5434` | `vedaai` / `vedaai` |
+| Redis | `localhost:6380` | — |
+| MinIO API | `http://localhost:9002` | `vedaai` / `vedaai-secret` |
+| MinIO console | `http://localhost:9003` | same |
+
+> **Why non-default ports?** These are deliberately off the standard numbers. A
+> native PostgreSQL Windows service commonly owns 5432 and wins the bind over
+> Docker, which produces a confusing `P1000: Authentication failed` because
+> Prisma is talking to the *other* Postgres. Using 5434/6380/9002 keeps VedaAI
+> isolated from anything else already running on the machine.
 
 The `pgvector/pgvector:pg16` image is required — the plain `postgres` image will fail the
 migration because the schema declares `vector(384)` columns.
@@ -246,41 +252,53 @@ Type: Inter via `next/font`, H1 `38px/700` desktop and `22px/700` mobile.
 
 ## Project status
 
-### Done
+### Done — the full pipeline runs end to end
 
-- [x] Turborepo + pnpm workspaces, shared tsconfig presets, Prettier, `.gitattributes`
-- [x] `packages/shared` — Zod contracts for REST DTOs, VLM structured outputs, WS events
-- [x] `packages/database` — Prisma schema (13 models, pgvector), seed matching the designs
-- [x] `docker-compose` — Postgres(pgvector) + Redis + MinIO with bucket auto-provisioning
-- [x] Annotated `.env.example` covering every service
-- [x] Design token layer + app shell (sidebar, icon rail, topbar, mobile drawer)
-- [x] **Screen 1 & 2** — Upload, empty and filled state, with drag/drop, validation,
-      progress, and remove
-- [x] **Screen 3** — Extracting, with collapsed rail and live WebSocket progress
-- [x] Socket.io client hook bound to the typed event contract
+- [x] Turborepo + pnpm workspaces, shared tsconfig presets, Prettier
+- [x] `packages/shared` — Zod contracts for REST DTOs, VLM outputs, WS events
+- [x] `packages/database` — Prisma schema (14 models, pgvector 768-dim), migration applied, seed
+- [x] `docker-compose` — Postgres(pgvector) + Redis + MinIO on dedicated ports
+- [x] Design token layer + app shell (sidebar, 64px icon rail, topbar, mobile drawer)
+- [x] **Screen 1 & 2** — upload empty/filled, drag-drop, validation, progress, remove
+- [x] **Screen 3** — extracting, collapsed rail, live WebSocket progress
+- [x] **Screen 4** — question ⇄ answer review: split pane, green bounding-box canvas
+      overlay, AI feedback panel, step deductions, manual override, finalise
+- [x] Auth — sign-in page, httpOnly cookie session, global `JwtAuthGuard`
+- [x] `StorageModule` — pre-signed PUT/GET, verified round-trip against MinIO
+- [x] `AssessmentsModule` / `SubmissionsModule` — CRUD, asset lifecycle, rubric edit,
+      override audit trail, finalise
+- [x] `QueueModule` — 6 BullMQ queues wired as a FlowProducer graph with fan-out/fan-in
+- [x] `AiEngineModule` — provider-agnostic adapter (Google / OpenRouter / OpenCode Zen /
+      OpenAI / Ollama), Gemini-safe structured output, image rasterisation and region
+      cropping, hybrid label+embedding+lexical mapping
+- [x] `EventsGateway` — typed Socket.io emitters, weighted cross-stage progress
+- [x] Terminal-failure reporting on every stage, so a dead job surfaces in the UI
+      instead of leaving the extracting screen spinning
+
+### Verified manually
+
+| Check | Result |
+|---|---|
+| `POST /auth/login` → JWT + session user | ✅ |
+| Unauthenticated `GET /assessments` | ✅ 401 |
+| Pre-sign → browser PUT → confirm → object in MinIO | ✅ |
+| `POST /start-mapping` → ingest → rasterise → page row → flow fan-out | ✅ |
+| Sign-in sets httpOnly cookie; API accepts it cross-port | ✅ |
+| pgvector extension + both `vector(768)` columns | ✅ |
 
 ### Next
 
-- [ ] **`apps/api`** — NestJS scaffold, config module, Prisma module, health checks
-- [ ] `AuthModule` — Auth.js on web issuing a JWT that Nest verifies (Google OAuth optional)
-- [ ] `StorageModule` — pre-signed PUT/GET against R2 / MinIO
-- [ ] `AssessmentsModule` + `SubmissionsModule` — CRUD, asset lifecycle, rubric editing
-- [ ] `QueueModule` + `EventsGateway` — BullMQ flow, typed WS emitters
-- [ ] `AiEngineModule` — provider adapter, extraction / layout / mapping / grading
-- [ ] **Screen 4** — Question ⇄ Answer mapping: PDF.js canvas, bounding-box overlay,
-      AI feedback panel, score override
-- [ ] Exam list page (currently `/exams` redirects to the seeded demo assessment)
+- [ ] Exam list page (`/exams` currently redirects to the most recent exam)
+- [ ] Rubric editor UI (the `PATCH /questions/:id` endpoint exists and works)
+- [ ] Google OAuth provider on the sign-in page
+- [ ] Split workers into their own process for horizontal scaling
 - [ ] Tests: Zod contract round-trips, upload flow, grading determinism
 
-### Open decisions
+### Open item
 
-- **AI provider / model IDs.** `AI_VISION_MODEL` and `AI_GRADING_MODEL` are intentionally
-  blank. The pipeline requires a model with **image input** *and* **structured JSON
-  output** — not every free model has both.
-- **Embeddings.** Defaulting to `local` (`bge-small-en-v1.5`, 384-dim, no API key, no rate
-  limit). Switch via `EMBEDDING_PROVIDER`.
-
----
+- **`GOOGLE_AI_API_KEY` is required** before a grading job can complete. Everything
+  up to and including page rasterisation runs without it; the AI stages fail with a
+  clear message. Check status with `GET /api/v1/health/ai`.
 
 ## Commands
 
@@ -297,3 +315,23 @@ Type: Inter via `next/font`, H1 `38px/700` desktop and `22px/700` mobile.
 | `pnpm db:push` | Push schema without a migration (prototyping) |
 | `pnpm db:seed` | Seed demo data |
 | `pnpm db:studio` | Prisma Studio |
+
+### Health checks
+
+```bash
+curl http://localhost:4000/api/v1/health      # database connectivity
+curl http://localhost:4000/api/v1/health/ai   # confirms the AI key + model work
+```
+
+### Troubleshooting
+
+**Port already in use / stale server.** Restarting a dev server without killing the
+old one leaves the old code serving. On Windows:
+
+```powershell
+Get-NetTCPConnection -LocalPort 4000 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+**`P1000: Authentication failed`.** Something other than the VedaAI container is
+answering on the Postgres port — usually a native PostgreSQL Windows service. Check
+with `Get-NetTCPConnection -LocalPort 5434 -State Listen`.

@@ -153,9 +153,9 @@ model Question {
   sourcePage     Int?
   sourceBBox     Json?
   expectedAnswer String?      @db.Text
-  /// bge-small-en-v1.5 produces 384 dimensions. If you switch embedding models,
+  /// text-embedding-004 produces 768 dimensions. If you switch embedding models,
   /// change this AND the matching migration.
-  embedding      Unsupported("vector(384)")?
+  embedding      Unsupported("vector(768)")?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -242,8 +242,11 @@ model AnswerRegion {
   bbox           Json
   transcript     String                      @db.Text
   isPrintedLabel Boolean                     @default(false)
+  /// Question label the vision model read at the start of this region ("Q2").
+  /// The strongest signal the mapping stage has, so it is persisted, not derived.
+  labelHint      String?
   confidence     Float                       @default(0)
-  embedding      Unsupported("vector(384)")?
+  embedding      Unsupported("vector(768)")?
   createdAt      DateTime                    @default(now())
 
   page            SubmissionPage   @relation(fields: [pageId], references: [id], onDelete: Cascade)

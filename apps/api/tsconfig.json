@@ -1,0 +1,22 @@
+{
+  "extends": "@vedaai/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "outDir": "./dist",
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": "./src"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

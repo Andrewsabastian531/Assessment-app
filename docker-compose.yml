@@ -1,8 +1,11 @@
 name: vedaai
 
+# Host ports are deliberately non-default: this machine already runs a native
+# PostgreSQL 18 service on 5432 and a separate "unischool" stack on 5433/6379.
+# VedaAI gets its own range so nothing can collide.
 services:
   # Postgres with pgvector preinstalled — the plain postgres image will NOT work
-  # because the schema declares vector(384) columns.
+  # because the schema declares vector(768) columns.
   postgres:
     image: pgvector/pgvector:pg16
     container_name: vedaai-postgres
@@ -12,7 +15,7 @@ services:
       POSTGRES_PASSWORD: vedaai
       POSTGRES_DB: vedaai
     ports:
-      - '5432:5432'
+      - '5434:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +30,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - '6379:6379'
+      - '6380:6379'
     volumes:
       - redis-data:/data
     healthcheck:
@@ -47,8 +50,8 @@ services:
       MINIO_ROOT_USER: vedaai
       MINIO_ROOT_PASSWORD: vedaai-secret
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '9002:9000'
+      - '9003:9001'
     volumes:
       - minio-data:/data
     healthcheck:

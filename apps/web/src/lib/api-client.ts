@@ -1,5 +1,7 @@
 import type {
   ConfirmUploadInput,
+  Evaluation,
+  OverrideEvaluationInput,
   PresignRequest,
   PresignResponse,
   ReviewPayload,
@@ -78,6 +80,21 @@ export const api = {
 
   getReviewPayload: (submissionId: string) =>
     request<ReviewPayload>(`/submissions/${submissionId}`),
+
+  overrideEvaluation: (evaluationId: string, body: OverrideEvaluationInput) =>
+    request<Evaluation>(`/evaluations/${evaluationId}/override`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  finalizeSubmission: (submissionId: string) =>
+    request<void>(`/submissions/${submissionId}/finalize`, { method: 'POST' }),
+
+  createAssessment: (title: string) =>
+    request<{ id: string }>('/assessments', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    }),
 };
 
 /**

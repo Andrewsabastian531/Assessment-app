@@ -9,8 +9,6 @@
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
     "noUncheckedIndexedAccess": false,
-    "outDir": "dist",
-    "rootDir": "src",
     "isolatedModules": false
   }
 }
