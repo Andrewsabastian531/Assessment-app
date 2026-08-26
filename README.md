@@ -128,14 +128,69 @@ Everything lives in one root `.env`; Turborepo passes it to both apps. See
 |---|---|
 | Database | `DATABASE_URL`, `DIRECT_URL` |
 | Queue | `REDIS_URL`, `WORKER_CONCURRENCY` |
-| Auth | `AUTH_SECRET`, `JWT_EXPIRES_IN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| Auth | `AUTH_SECRET`, `JWT_EXPIRES_IN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` |
 | Storage | `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, `S3_FORCE_PATH_STYLE`, `S3_PUBLIC_URL` |
 | AI | `AI_PROVIDER`, `AI_VISION_MODEL`, `AI_GRADING_MODEL`, plus the provider key |
 | Embeddings | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` |
 | Services | `API_PORT`, `WEB_PORT`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL`, `CORS_ORIGINS` |
 
-`AUTH_SECRET` must be **identical** for web and api — Auth.js signs the JWT with it and
-NestJS verifies it. Generate one with `openssl rand -base64 32`.
+`AUTH_SECRET` must be **identical** for web and api — the API signs the JWT with it
+and NestJS verifies it on every request. Generate one with `openssl rand -base64 32`.
+
+### How auth works
+
+**Email + password**
+
+1. `/sign-in` posts to a Next route handler (`/api/auth/login` or `/api/auth/register`).
+2. That handler calls the API, which validates with Zod, hashes with bcrypt, and
+   returns a signed JWT.
+3. The handler stores the JWT in an **httpOnly** cookie (`vedaai.token`) — it never
+   reaches client JS, so an XSS cannot exfiltrate it.
+4. The browser replays that cookie to the API automatically: `localhost:3000` and
+   `localhost:4000` are the *same site* (ports do not create a new site), so a
+   `SameSite=Lax` cookie crosses the port boundary.
+5. NestJS's `JwtStrategy` accepts the token from the cookie **or** an
+   `Authorization: Bearer` header, so server components, the browser and `curl`
+   all pass through the same guard.
+
+**Google OAuth**
+
+`/api/auth/google/start` → Google consent → `/api/auth/google/callback`. The callback
+exchanges the code for an ID token and posts it to the API, which **re-verifies it
+with Google** before trusting any field. Two details that matter:
+
+- `state` is stored in a short-lived httpOnly cookie and compared on return — this
+  is what prevents login CSRF.
+- The API checks the token's `aud` against `GOOGLE_CLIENT_ID`. Without that, a token
+  minted for *any* Google app would be accepted.
+
+The web app never decides who the user is; it only relays. A Google identity whose
+verified email matches an existing password account is **linked** to it rather than
+creating a second user.
+
+With `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` unset, `GET /auth/providers` reports
+`{"google": false}` and the button is not rendered at all.
+
+Setup: console.cloud.google.com → APIs & Services → Credentials → Create OAuth client
+ID → Web application, with authorised redirect URI
+`http://localhost:3000/api/auth/google/callback`.
+
+### User table
+
+Sign-up collects exactly these fields:
+
+| Column | Notes |
+|---|---|
+| `firstName` | The greeting uses this alone ("Welcome back, Priya") |
+| `lastName` | Separate so users can be sorted and searched by surname |
+| `email` | Unique, lower-cased on write |
+| `passwordHash` | bcrypt; **null** for OAuth-only accounts |
+| `schoolId` | FK to `schools`, resolved from the school name typed at sign-up |
+| `role` | `TEACHER` or `ADMIN` |
+| `avatarUrl` | Taken from the Google profile picture when present |
+
+School names are matched **case-insensitively**, so "Delhi Public School" and
+"delhi public school" resolve to the same `schools` row instead of duplicating it.
 
 ### Cloudflare R2 (production storage)
 
@@ -162,7 +217,9 @@ cannot drift.
 | Method | Route | Purpose |
 |---|---|---|
 | `POST` | `/auth/login` | Email + password → JWT |
-| `POST` | `/auth/register` | Create teacher account |
+| `POST` | `/auth/register` | Create teacher account (first/last name, school, email) |
+| `POST` | `/auth/oauth/exchange` | Verify a provider ID token, link or create the user |
+| `GET` | `/auth/providers` | Which social providers this server can serve |
 | `GET` | `/auth/me` | Current session user |
 | `GET` | `/assessments` | List exams |
 | `POST` | `/assessments` | Create exam |
