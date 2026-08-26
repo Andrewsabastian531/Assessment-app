@@ -1,0 +1,111 @@
+import type {
+  ConfirmUploadInput,
+  PresignRequest,
+  PresignResponse,
+  ReviewPayload,
+  StartMappingInput,
+  StartMappingResponse,
+} from '@vedaai/shared';
+
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+/**
+ * Set NEXT_PUBLIC_UI_PREVIEW=1 to exercise the UI without a running backend.
+ * Uploads are simulated in the browser and nothing leaves the page. Off by
+ * default so a misconfigured deploy fails loudly instead of faking success.
+ */
+export const UI_PREVIEW = process.env.NEXT_PUBLIC_UI_PREVIEW === '1';
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}/api/v1${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let message = response.statusText;
+    let details: unknown;
+    try {
+      const body = await response.json();
+      message = body.message ?? message;
+      details = body.details;
+    } catch {
+      // Non-JSON error body — keep the status text.
+    }
+    throw new ApiError(message, response.status, details);
+  }
+
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+export const api = {
+  presignUpload: (assessmentId: string, body: PresignRequest) =>
+    request<PresignResponse>(`/assessments/${assessmentId}/uploads/presign`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  confirmUpload: (assessmentId: string, body: ConfirmUploadInput) =>
+    request<void>(`/assessments/${assessmentId}/uploads/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  deleteAsset: (assetId: string) =>
+    request<void>(`/assets/${assetId}`, { method: 'DELETE' }),
+
+  startMapping: (assessmentId: string, body: StartMappingInput) =>
+    request<StartMappingResponse>(`/assessments/${assessmentId}/start-mapping`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  getReviewPayload: (submissionId: string) =>
+    request<ReviewPayload>(`/submissions/${submissionId}`),
+};
+
+/**
+ * Uploads straight to object storage with XHR rather than fetch, because fetch
+ * still cannot report upload progress and the file chips show a progress bar.
+ */
+export function putToStorage(
+  url: string,
+  file: File,
+  headers: Record<string, string>,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    for (const [key, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(key, value);
+    }
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new ApiError(`Storage rejected the upload (${xhr.status})`, xhr.status));
+    xhr.onerror = () => reject(new ApiError('Network error during upload', 0));
+    xhr.send(file);
+  });
+}

@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* ==========================================================================
+   VedaAI design tokens — extracted from the Figma screens.
+   Tailwind v4 is CSS-first: every key below becomes a utility automatically
+   (e.g. --color-brand-500 → bg-brand-500 / text-brand-500 / border-brand-500).
+   ========================================================================== */
+
+@theme {
+  /* ---- brand orange: headline accent, upload labels, sparkles, badges ---- */
+  --color-brand-50: #fff7f3;
+  --color-brand-100: #ffede4;
+  --color-brand-200: #ffd9c7;
+  --color-brand-300: #ffb894;
+  --color-brand-400: #ff8f5c;
+  --color-brand-500: #f26522;
+  --color-brand-600: #dd541a;
+  --color-brand-700: #b84213;
+
+  /* ---- ink: headlines, primary pills, body copy ---- */
+  --color-ink-900: #111214;
+  --color-ink-800: #1f2124;
+  --color-ink-700: #3a3d42;
+  --color-ink-600: #6b7280;
+  --color-ink-500: #8b919b;
+  --color-ink-400: #9ca3af;
+  --color-ink-300: #c7cbd2;
+  --color-ink-200: #e5e7eb;
+  --color-ink-100: #f1f2f4;
+  --color-ink-50: #fafafa;
+
+  /* ---- semantic: score pills + answer-sheet bounding boxes ---- */
+  --color-success-600: #16a34a;
+  --color-success-500: #22c55e;
+  --color-success-100: #dcfce7;
+  --color-success-50: #f0fdf4;
+  --color-warning-600: #d97706;
+  --color-warning-100: #fef3c7;
+  --color-danger-600: #dc2626;
+  --color-danger-100: #fee2e2;
+
+  /* ---- surfaces ---- */
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafafa;
+  --color-surface-sunken: #f5f6f7;
+
+  /* ---- typography ---- */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* ---- radii, matched to the Figma corner values ---- */
+  --radius-card: 0.75rem;
+  --radius-drop: 0.75rem;
+  --radius-nav: 0.5rem;
+  --radius-chip: 0.625rem;
+
+  /* ---- shell metrics ---- */
+  --spacing-sidebar: 14.5rem; /* 232px expanded */
+  --spacing-rail: 4rem; /* 64px collapsed */
+  --spacing-topbar: 3.5rem; /* 56px */
+
+  /* ---- shadows: very soft in the design ---- */
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.03);
+  --shadow-pop: 0 8px 24px -6px rgb(0 0 0 / 0.12);
+
+  /* ---- motion ---- */
+  --animate-sparkle: sparkle 2.4s ease-in-out infinite;
+  --animate-orbit: orbit 14s linear infinite;
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.92) rotate(-8deg);
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--color-ink-200);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-surface-muted);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* The mapping screen has two independently scrolling panes; a thin scrollbar
+     keeps them from stealing horizontal room from the page image. */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-300) transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: var(--color-ink-300);
+    border-radius: 9999px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /*
+   * The headline treatment on the upload screen: "Question Paper & Answer
+   * Sheets" is orange with a solid underline rule sitting a few pixels below
+   * the baseline. text-decoration cannot be offset precisely enough across
+   * browsers, so it is drawn as a gradient background instead.
+   */
+  .headline-underline {
+    background-image: linear-gradient(
+      to top,
+      var(--color-brand-500) 0,
+      var(--color-brand-500) 2px,
+      transparent 2px
+    );
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    padding-bottom: 0.12em;
+  }
+}
