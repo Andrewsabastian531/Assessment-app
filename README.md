@@ -43,7 +43,7 @@ uploads straight to object storage; the API only ever handles keys and metadata.
 | Path | Purpose |
 |---|---|
 | `apps/web` | Next.js frontend |
-| `apps/api` | NestJS API + BullMQ workers *(not built yet)* |
+| `apps/api` | NestJS API + BullMQ pipeline workers |
 | `packages/shared` | Zod schemas + TypeScript types shared by both apps. Single source of truth for API DTOs, VLM structured outputs and WebSocket payloads |
 | `packages/database` | Prisma schema, generated client, migrations, seed |
 | `packages/typescript-config` | Shared `tsconfig` presets |
@@ -87,7 +87,7 @@ pnpm infra:up          # postgres(pgvector) + redis + minio, all on localhost
 > isolated from anything else already running on the machine.
 
 The `pgvector/pgvector:pg16` image is required — the plain `postgres` image will fail the
-migration because the schema declares `vector(384)` columns.
+migration because the schema declares `vector(768)` columns.
 
 Prefer hosted? Swap `DATABASE_URL` for a **Supabase** or **Neon** connection string and
 `REDIS_URL` for an **Upstash** one (note: Upstash needs `rediss://`, with two `s`). On a
@@ -111,12 +111,11 @@ pnpm dev               # turbo runs every app in parallel
 ```
 
 - Web → http://localhost:3000
-- API → http://localhost:4000 *(once `apps/api` exists)*
+- API → http://localhost:4000
 
-**Want to see the UI before the backend exists?** Set `NEXT_PUBLIC_UI_PREVIEW=1` in
-`.env`. Uploads are then simulated in the browser so the upload and extracting screens are
-fully clickable with no API running. It is off by default so a misconfigured deploy fails
-loudly instead of faking success.
+**UI-only preview.** Set `NEXT_PUBLIC_UI_PREVIEW=1` in `.env` to simulate uploads in the
+browser and click through the screens with no API running. It defaults to `0` so a
+misconfigured deploy fails loudly instead of faking success.
 
 ---
 
@@ -156,8 +155,9 @@ NestJS verifies it. Generate one with `openssl rand -base64 32`.
 
 ## API routes
 
-All under `/api/v1`, all JWT-guarded except `/auth/*`. **Not implemented yet** — this is
-the agreed contract, encoded as Zod schemas in `packages/shared`.
+All under `/api/v1`, all JWT-guarded except `/auth/*` and `/health*`. Request and
+response shapes are the Zod schemas in `packages/shared`, so the client and server
+cannot drift.
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -177,7 +177,6 @@ the agreed contract, encoded as Zod schemas in `packages/shared`.
 | `GET` | `/submissions/:id/pages/:idx/url` | Signed GET for a page image |
 | `PATCH` | `/evaluations/:id/override` | Manual mark override |
 | `POST` | `/submissions/:id/finalize` | Lock the result |
-| `GET` | `/jobs/:id` | Job status (SSE/polling fallback) |
 
 ## WebSocket events
 
