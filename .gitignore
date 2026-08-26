@@ -38,3 +38,6 @@ Thumbs.db
 
 # test artifacts
 coverage/
+
+# prisma generate stamp (see packages/database/scripts/generate.mjs)
+**/node_modules/.cache/
