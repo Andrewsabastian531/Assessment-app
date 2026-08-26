@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
 import type { SessionUser } from '@vedaai/shared';
 import { API_URL } from './api-client';
+import { TOKEN_COOKIE } from './auth-cookie';
 
-export const TOKEN_COOKIE = 'vedaai.token';
+export { TOKEN_COOKIE };
 
 /**
  * Reads the current teacher from the API using the httpOnly cookie set at login.

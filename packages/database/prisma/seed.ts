@@ -25,7 +25,8 @@ async function main() {
     update: { schoolId: school.id },
     create: {
       email: 'madhur@vedaai.test',
-      name: 'Madhur Rastogi',
+      firstName: 'Madhur',
+      lastName: 'Rastogi',
       passwordHash,
       role: 'TEACHER',
       schoolId: school.id,

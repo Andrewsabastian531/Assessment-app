@@ -1,22 +1,18 @@
 import { NextResponse } from 'next/server';
-import { loginSchema } from '@vedaai/shared';
+import { registerSchema } from '@vedaai/shared';
 import { API_URL } from '@/lib/api-client';
 import { setSessionCookie } from '@/lib/auth-cookie';
 
-/**
- * Exchanges credentials for an API JWT and stores it in an httpOnly cookie.
- * Keeping the token out of client JS means an XSS cannot exfiltrate it.
- */
 export async function POST(request: Request) {
-  const parsed = loginSchema.safeParse(await request.json());
+  const parsed = registerSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
-      { message: parsed.error.issues[0]?.message ?? 'Invalid credentials' },
+      { message: parsed.error.issues[0]?.message ?? 'Check the form and try again' },
       { status: 400 },
     );
   }
 
-  const upstream = await fetch(`${API_URL}/api/v1/auth/login`, {
+  const upstream = await fetch(`${API_URL}/api/v1/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(parsed.data),
@@ -24,7 +20,7 @@ export async function POST(request: Request) {
 
   if (!upstream) {
     return NextResponse.json(
-      { message: 'Could not reach the API. Is it running on ' + API_URL + '?' },
+      { message: `Could not reach the API at ${API_URL}. Is it running?` },
       { status: 503 },
     );
   }
@@ -32,7 +28,7 @@ export async function POST(request: Request) {
   const payload = await upstream.json();
   if (!upstream.ok) {
     return NextResponse.json(
-      { message: payload.message ?? 'Sign in failed' },
+      { message: payload.message ?? 'Could not create the account' },
       { status: upstream.status },
     );
   }

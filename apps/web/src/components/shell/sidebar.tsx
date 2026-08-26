@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PanelLeft, ChevronsRight, Settings, Sparkles } from 'lucide-react';
+import { Settings, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo, LogoMark } from './logo';
 import { PRIMARY_NAV, isNavItemActive } from './nav-config';
@@ -16,7 +16,6 @@ export interface SidebarSchool {
 
 interface SidebarProps {
   collapsed: boolean;
-  onToggle: () => void;
   school: SidebarSchool | null;
 }
 
@@ -25,7 +24,7 @@ interface SidebarProps {
  *  - expanded (232px) on the upload screens
  *  - icon-only (64px) on the "Extracting…" screen
  */
-export function Sidebar({ collapsed, onToggle, school }: SidebarProps) {
+export function Sidebar({ collapsed, school }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -40,24 +39,10 @@ export function Sidebar({ collapsed, onToggle, school }: SidebarProps) {
       <div
         className={cn(
           'flex h-topbar items-center',
-          collapsed ? 'justify-center px-2' : 'justify-between px-4',
+          collapsed ? 'justify-center px-2' : 'px-4',
         )}
       >
-        {collapsed ? (
-          <LogoMark />
-        ) : (
-          <>
-            <Logo />
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-label="Collapse sidebar"
-              className="rounded-md p-1 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
-            >
-              <PanelLeft className="size-[18px]" />
-            </button>
-          </>
-        )}
+        {collapsed ? <LogoMark /> : <Logo />}
       </div>
 
       {/* ---------------- primary CTA ---------------- */}
@@ -127,17 +112,6 @@ export function Sidebar({ collapsed, onToggle, school }: SidebarProps) {
           ) : (
             <SchoolCard school={school} />
           ))}
-
-        {collapsed && (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label="Expand sidebar"
-            className="mx-auto rounded-md p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
-          >
-            <ChevronsRight className="size-4" />
-          </button>
-        )}
       </div>
     </aside>
   );

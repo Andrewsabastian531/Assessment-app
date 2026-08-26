@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +11,7 @@ import type {
   AuthResponse,
   JwtClaims,
   LoginInput,
+  OAuthExchangeInput,
   RegisterInput,
   SessionUser,
 } from '@vedaai/shared';
@@ -20,8 +22,21 @@ const USER_WITH_SCHOOL = {
   school: { select: { id: true, name: true, city: true, crestUrl: true } },
 } as const;
 
+interface UserWithSchool {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: SessionUser['role'];
+  avatarUrl: string | null;
+  schoolId: string | null;
+  school: { id: string; name: string; city: string | null; crestUrl: string | null } | null;
+}
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -29,21 +44,22 @@ export class AuthService {
   ) {}
 
   async register(input: RegisterInput): Promise<AuthResponse> {
-    const existing = await this.prisma.user.findUnique({ where: { email: input.email } });
+    const email = input.email.toLowerCase();
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictException('An account with that email already exists');
     }
 
-    const school = input.schoolName
-      ? await this.prisma.school.create({ data: { name: input.schoolName } })
-      : null;
+    const school = await this.findOrCreateSchool(input.schoolName);
 
     const user = await this.prisma.user.create({
       data: {
-        email: input.email,
-        name: input.name,
+        email,
+        firstName: input.firstName,
+        lastName: input.lastName,
         passwordHash: await bcrypt.hash(input.password, 10),
-        schoolId: school?.id ?? null,
+        schoolId: school.id,
       },
       include: USER_WITH_SCHOOL,
     });
@@ -53,7 +69,7 @@ export class AuthService {
 
   async login(input: LoginInput): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({
-      where: { email: input.email },
+      where: { email: input.email.toLowerCase() },
       include: USER_WITH_SCHOOL,
     });
 
@@ -69,6 +85,70 @@ export class AuthService {
     return this.issueToken(user);
   }
 
+  /**
+   * Completes a social sign-in. The web app runs the authorization-code flow and
+   * posts the resulting ID token here; this method verifies it with the provider
+   * before trusting a single field in it — an unverified ID token is just a
+   * base64 string anyone can forge.
+   */
+  async exchangeOAuth(input: OAuthExchangeInput): Promise<AuthResponse> {
+    const profile = await this.verifyGoogleIdToken(input.idToken);
+
+    const existingAccount = await this.prisma.oAuthAccount.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: input.provider,
+          providerAccountId: profile.sub,
+        },
+      },
+      include: { user: { include: USER_WITH_SCHOOL } },
+    });
+
+    if (existingAccount) {
+      return this.issueToken(existingAccount.user);
+    }
+
+    // Link to an existing password account with the same verified email rather
+    // than creating a duplicate identity for the same person.
+    const byEmail = await this.prisma.user.findUnique({
+      where: { email: profile.email },
+      include: USER_WITH_SCHOOL,
+    });
+
+    const user =
+      byEmail ??
+      (await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          avatarUrl: profile.picture,
+          // No school yet — the teacher sets it from Settings after first sign-in.
+          passwordHash: null,
+        },
+        include: USER_WITH_SCHOOL,
+      }));
+
+    await this.prisma.oAuthAccount.create({
+      data: {
+        userId: user.id,
+        provider: input.provider,
+        providerAccountId: profile.sub,
+        email: profile.email,
+      },
+    });
+
+    this.logger.log(`Linked ${input.provider} account for ${user.email}`);
+    return this.issueToken(user);
+  }
+
+  isGoogleConfigured(): boolean {
+    return Boolean(
+      this.config.get<string>('GOOGLE_CLIENT_ID', '') &&
+        this.config.get<string>('GOOGLE_CLIENT_SECRET', ''),
+    );
+  }
+
   async me(userId: string): Promise<SessionUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -78,11 +158,70 @@ export class AuthService {
     return this.toSessionUser(user);
   }
 
-  private issueToken(
-    user: Awaited<ReturnType<PrismaService['user']['create']>> & {
-      school: { id: string; name: string; city: string | null; crestUrl: string | null } | null;
-    },
-  ): AuthResponse {
+  /**
+   * Schools are matched case-insensitively by name so two teachers typing
+   * "Delhi Public School" and "delhi public school" land in the same school
+   * rather than creating a duplicate.
+   */
+  private async findOrCreateSchool(name: string) {
+    const trimmed = name.trim();
+    const existing = await this.prisma.school.findFirst({
+      where: { name: { equals: trimmed, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (existing) return existing;
+    return this.prisma.school.create({ data: { name: trimmed }, select: { id: true } });
+  }
+
+  private async verifyGoogleIdToken(idToken: string) {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID', '');
+    if (!clientId) {
+      throw new UnauthorizedException('Google sign-in is not configured on this server');
+    }
+
+    const response = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+    ).catch(() => null);
+
+    if (!response?.ok) {
+      throw new UnauthorizedException('Could not verify the Google sign-in');
+    }
+
+    const payload = (await response.json()) as {
+      aud?: string;
+      sub?: string;
+      email?: string;
+      email_verified?: string | boolean;
+      given_name?: string;
+      family_name?: string;
+      name?: string;
+      picture?: string;
+    };
+
+    // Without the audience check, a token minted for any other Google app would
+    // be accepted here.
+    if (payload.aud !== clientId) {
+      throw new UnauthorizedException('This Google token was issued for another app');
+    }
+    if (!payload.sub || !payload.email) {
+      throw new UnauthorizedException('Google did not return an email for this account');
+    }
+    if (payload.email_verified !== true && payload.email_verified !== 'true') {
+      throw new UnauthorizedException('Your Google email address is not verified');
+    }
+
+    const [fallbackFirst = '', ...fallbackRest] = (payload.name ?? '').split(' ');
+
+    return {
+      sub: payload.sub,
+      email: payload.email.toLowerCase(),
+      firstName: payload.given_name || fallbackFirst || payload.email.split('@')[0]!,
+      lastName: payload.family_name || fallbackRest.join(' '),
+      picture: payload.picture ?? null,
+    };
+  }
+
+  private issueToken(user: UserWithSchool): AuthResponse {
     const claims: Omit<JwtClaims, 'iat' | 'exp'> = {
       sub: user.id,
       email: user.email,
@@ -100,18 +239,13 @@ export class AuthService {
     };
   }
 
-  private toSessionUser(user: {
-    id: string;
-    email: string;
-    name: string;
-    role: SessionUser['role'];
-    avatarUrl: string | null;
-    school: { id: string; name: string; city: string | null; crestUrl: string | null } | null;
-  }): SessionUser {
+  private toSessionUser(user: UserWithSchool): SessionUser {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: [user.firstName, user.lastName].filter(Boolean).join(' '),
       role: user.role,
       avatarUrl: user.avatarUrl,
       school: user.school,

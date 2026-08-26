@@ -1,27 +1,26 @@
 'use client';
 
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Bell,
-  ChevronDown,
   ClipboardList,
   HelpCircle,
   Menu,
+  PanelLeft,
   Sparkles,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn, initials } from '@/lib/utils';
+import type { SessionUser } from '@vedaai/shared';
+import { cn } from '@/lib/utils';
 import { Logo } from './logo';
-
-export interface TopbarUser {
-  name: string;
-  avatarUrl: string | null;
-}
+import { ProfileMenu } from './profile-menu';
 
 interface TopbarProps {
   breadcrumb: string;
-  user: TopbarUser | null;
+  user: SessionUser | null;
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
   hasNotifications?: boolean;
   onOpenMobileNav: () => void;
 }
@@ -29,15 +28,36 @@ interface TopbarProps {
 export function Topbar({
   breadcrumb,
   user,
+  sidebarCollapsed,
+  onToggleSidebar,
   hasNotifications = true,
   onOpenMobileNav,
 }: TopbarProps) {
   const router = useRouter();
 
   return (
-    <header className="flex h-topbar shrink-0 items-center justify-between border-b border-ink-200 bg-white px-3 sm:px-4">
-      {/* ---- left: back + breadcrumb (desktop) / logo (mobile) ---- */}
-      <div className="flex min-w-0 items-center gap-2">
+    <header className="relative z-30 flex h-topbar shrink-0 items-center justify-between border-b border-ink-200 bg-white px-3 sm:px-4">
+      <div className="flex min-w-0 items-center gap-1.5">
+        {/*
+          The sidebar toggle lives here rather than inside the sidebar itself.
+          Inside the rail it had nowhere to go once collapsed — 64px cannot hold
+          both the logo and the control, so the button ended up underneath the
+          logo and became unclickable. In the topbar it is always visible and
+          always in the same place, in both states.
+        */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={!sidebarCollapsed}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden rounded-md p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 lg:inline-flex"
+        >
+          <PanelLeft
+            className={cn('size-[18px] transition-transform', sidebarCollapsed && 'rotate-180')}
+          />
+        </button>
+
         <button
           type="button"
           onClick={() => router.back()}
@@ -57,11 +77,10 @@ export function Topbar({
         </span>
       </div>
 
-      {/* ---- right: actions ---- */}
       <div className="flex items-center gap-0.5 sm:gap-1">
-        <IconAction label="Help" className="hidden sm:inline-flex">
+        <ComingSoonTooltip label="Help">
           <HelpCircle className="size-[18px]" />
-        </IconAction>
+        </ComingSoonTooltip>
 
         <IconAction label="Notifications">
           <span className="relative">
@@ -76,21 +95,7 @@ export function Topbar({
           <Sparkles className="size-[18px]" />
         </IconAction>
 
-        {user && (
-          <button
-            type="button"
-            className="ml-1 flex items-center gap-2 rounded-full py-1 pl-1 pr-1 transition-colors hover:bg-ink-100 sm:pr-2"
-          >
-            <Avatar>
-              {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
-              <AvatarFallback>{initials(user.name)}</AvatarFallback>
-            </Avatar>
-            <span className="hidden text-[13px] font-medium text-ink-900 lg:inline">
-              {user.name}
-            </span>
-            <ChevronDown className="hidden size-4 text-ink-500 lg:inline" />
-          </button>
-        )}
+        {user && <ProfileMenu user={user} />}
 
         <button
           type="button"
@@ -102,6 +107,48 @@ export function Topbar({
         </button>
       </div>
     </header>
+  );
+}
+
+/**
+ * Wraps an action that is not built yet. Uses hover and focus rather than the
+ * `title` attribute so the copy appears immediately and is keyboard reachable.
+ */
+function ComingSoonTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-label={label}
+        aria-describedby={open ? 'coming-soon-tip' : undefined}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="inline-flex items-center justify-center rounded-md p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+      >
+        {children}
+      </button>
+
+      {open && (
+        <span
+          id="coming-soon-tip"
+          role="tooltip"
+          className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-50 whitespace-nowrap rounded-md bg-ink-900 px-2.5 py-1.5 text-[11.5px] font-medium text-white shadow-pop"
+        >
+          Will be released soon
+          <span className="ml-1.5 text-ink-400">v1.1.0</span>
+        </span>
+      )}
+    </span>
   );
 }
 

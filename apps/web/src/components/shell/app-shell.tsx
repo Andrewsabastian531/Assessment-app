@@ -9,8 +9,9 @@ import { cn } from '@/lib/utils';
 import { Logo } from './logo';
 import { PRIMARY_NAV, isNavItemActive } from './nav-config';
 import { SchoolCard } from './school-card';
-import { Sidebar, type SidebarSchool } from './sidebar';
-import { Topbar, type TopbarUser } from './topbar';
+import type { SessionUser } from '@vedaai/shared';
+import { Sidebar } from './sidebar';
+import { Topbar } from './topbar';
 
 interface ShellContextValue {
   collapsed: boolean;
@@ -47,12 +48,13 @@ export function useBreadcrumb(label: string) {
 }
 
 interface AppShellProps {
-  user: TopbarUser | null;
-  school: SidebarSchool | null;
+  /** The signed-in teacher. Everything in the chrome renders from this. */
+  user: SessionUser;
   children: React.ReactNode;
 }
 
-export function AppShell({ user, school, children }: AppShellProps) {
+export function AppShell({ user, children }: AppShellProps) {
+  const school = user.school;
   const [collapsed, setCollapsed] = React.useState(false);
   const [breadcrumb, setBreadcrumb] = React.useState('Exams');
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -72,16 +74,14 @@ export function AppShell({ user, school, children }: AppShellProps) {
   return (
     <ShellContext.Provider value={value}>
       <div className="flex h-dvh overflow-hidden bg-surface-muted">
-        <Sidebar
-          collapsed={collapsed}
-          onToggle={() => setCollapsed((prev) => !prev)}
-          school={school}
-        />
+        <Sidebar collapsed={collapsed} school={school} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar
             breadcrumb={breadcrumb}
             user={user}
+            sidebarCollapsed={collapsed}
+            onToggleSidebar={() => setCollapsed((prev) => !prev)}
             onOpenMobileNav={() => setMobileNavOpen(true)}
           />
           <main className="min-h-0 flex-1 overflow-auto">{children}</main>

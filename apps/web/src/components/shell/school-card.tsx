@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { SidebarSchool } from './sidebar';
 
+
 /**
  * The school crest. Falls back to a drawn emblem when no crest image is set, so
  * the sidebar never shows a broken image or an empty box.

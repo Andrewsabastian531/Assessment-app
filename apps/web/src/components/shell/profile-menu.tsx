@@ -1,0 +1,142 @@
+'use client';
+
+import * as React from 'react';
+import Link from 'next/link';
+import {
+  BookMarked,
+  ChevronDown,
+  LogOut,
+  Settings,
+  SquarePen,
+  UserRound,
+} from 'lucide-react';
+import type { SessionUser } from '@vedaai/shared';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn, initials } from '@/lib/utils';
+
+const MENU_ITEMS = [
+  { label: 'My Profile', href: '/profile', icon: UserRound },
+  { label: 'Edit Profile', href: '/profile/edit', icon: SquarePen },
+  { label: 'My Library', href: '/library', icon: BookMarked },
+  { label: 'Settings', href: '/settings', icon: Settings },
+];
+
+/**
+ * Avatar button that toggles a dropdown with the signed-in identity, account
+ * links and a logout action.
+ */
+export function ProfileMenu({ user }: { user: SessionUser }) {
+  const [open, setOpen] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Close on outside click and on Escape — a dropdown that only closes by
+  // clicking the trigger again feels broken.
+  React.useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const handleLogout = async () => {
+    setSigningOut(true);
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => null);
+    // Hard navigation so every server component re-renders without the session.
+    window.location.href = '/sign-in';
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          'ml-1 flex items-center gap-2 rounded-full py-1 pl-1 pr-1 transition-colors sm:pr-2',
+          open ? 'bg-ink-100' : 'hover:bg-ink-100',
+        )}
+      >
+        <Avatar>
+          {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
+          <AvatarFallback>{initials(user.name)}</AvatarFallback>
+        </Avatar>
+        <span className="hidden max-w-[140px] truncate text-[13px] font-medium text-ink-900 lg:inline">
+          {user.name}
+        </span>
+        <ChevronDown
+          className={cn(
+            'hidden size-4 text-ink-500 transition-transform lg:inline',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[248px] overflow-hidden rounded-card border border-ink-200 bg-white shadow-pop"
+        >
+          {/* identity header */}
+          <div className="flex items-center gap-2.5 border-b border-ink-100 px-3 py-3">
+            <Avatar className="size-9">
+              {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
+              <AvatarFallback>{initials(user.name)}</AvatarFallback>
+            </Avatar>
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-semibold text-ink-900">
+                {user.name}
+              </span>
+              <span className="block truncate text-[11.5px] text-ink-500">
+                {user.email}
+              </span>
+            </span>
+          </div>
+
+          <div className="py-1">
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-ink-700 transition-colors hover:bg-ink-50 hover:text-ink-900"
+                >
+                  <Icon className="size-4 text-ink-500" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-ink-100 p-2">
+            <button
+              type="button"
+              role="menuitem"
+              disabled={signingOut}
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-ink-200 py-2 text-[12px] font-semibold uppercase tracking-wide text-ink-700 transition-colors hover:bg-danger-100 hover:text-danger-600 disabled:opacity-60"
+            >
+              <LogOut className="size-3.5" />
+              {signingOut ? 'Signing out…' : 'Logout'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
