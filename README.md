@@ -384,12 +384,19 @@ NEXT_PUBLIC_WS_URL    https://vedaai-api.onrender.com
 COOKIE_SAMESITE       none
 ```
 
-`COOKIE_SAMESITE=none` is required here. `vercel.app` and `onrender.com` are different
-sites, so a `lax` cookie never reaches the API — you would sign in successfully and land
-back on the sign-in page. Because a `none` cookie rides along on any cross-site request,
-the API only honours it alongside an `X-VedaAI-Client` header, which a cross-site form or
-image cannot set. On your own domain (`app.example.com` + `api.example.com`) use `lax`
-instead and skip the exposure entirely.
+`COOKIE_SAMESITE=none` matters when the two apps are on different domains. Note what it
+does and does not do: a cookie belongs to the domain that set it, so one issued by
+`your-app.vercel.app` is **never** sent to `your-api.onrender.com`, whatever SameSite
+says. SameSite governs cross-site requests *to the cookie's own domain*.
+
+That is why browser traffic is relayed through this app rather than sent to the API
+directly. The browser calls `/api/proxy/...` on its own origin, a route handler reads the
+httpOnly cookie server-side and forwards the token as a bearer header. Same origin, so no
+CORS and no cookie-domain problem.
+
+Hosting both on one domain (`app.example.com` + `api.example.com`) removes the need for
+the hop: set `COOKIE_DOMAIN=.example.com`, keep `COOKIE_SAMESITE=lax`, and the browser can
+talk to the API directly.
 
 ### 5. Wire the three together
 

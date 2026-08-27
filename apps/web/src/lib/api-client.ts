@@ -21,6 +21,17 @@ export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:400
 /** Set NEXT_PUBLIC_UI_PREVIEW=1 to exercise the UI without a running backend. */
 export const UI_PREVIEW = process.env.NEXT_PUBLIC_UI_PREVIEW === '1';
 
+/**
+ * Browser traffic goes through this app's own origin and is relayed server-side
+ * (see app/api/proxy). The session cookie belongs to this domain, so it cannot
+ * authenticate a request sent straight to the API on another domain.
+ *
+ * On the server there is no cookie to forward and no CORS, so the API is called
+ * directly.
+ */
+const REQUEST_BASE =
+  typeof window === 'undefined' ? `${API_URL}/api/v1` : '/api/proxy';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -33,7 +44,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}/api/v1${path}`, {
+  const response = await fetch(`${REQUEST_BASE}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
