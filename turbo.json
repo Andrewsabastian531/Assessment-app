@@ -1,6 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
+  // "stream" rather than "tui": the interactive TUI does not forward Ctrl+C
+  // reliably in Git Bash / mintty on Windows, which orphans the dev servers.
+  "ui": "stream",
   "globalDependencies": [".env"],
   "globalEnv": [
     "NODE_ENV",

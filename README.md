@@ -361,6 +361,7 @@ Type: Inter via `next/font`, H1 `38px/700` desktop and `22px/700` mobile.
 | Command | Does |
 |---|---|
 | `pnpm dev` | Run every app in dev mode |
+| `pnpm stop` | Stop the dev servers and free ports 3000/4000 |
 | `pnpm build` | Build everything |
 | `pnpm typecheck` | Type-check every package |
 | `pnpm lint` | Lint everything |
@@ -381,12 +382,30 @@ curl http://localhost:4000/api/v1/health/ai   # confirms the AI key + model work
 
 ### Troubleshooting
 
-**Port already in use / stale server.** Restarting a dev server without killing the
-old one leaves the old code serving. On Windows:
+**Stopping the dev servers.**
 
-```powershell
-Get-NetTCPConnection -LocalPort 4000 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```bash
+pnpm stop
 ```
+
+Prefer this over Ctrl+C. `turbo run dev` fans out into a tree — turbo at the root,
+one Node per app, one per watch task — and in Git Bash / mintty on Windows Ctrl+C
+often reaches only the foreground process, orphaning the rest. They keep holding
+ports 3000 and 4000, so the next `pnpm dev` dies with `EADDRINUSE`.
+
+`pnpm stop` finds whatever is listening on those ports, climbs **up** to the root of
+the run, and kills that whole tree. Killing the port holder alone is not enough: it
+is a leaf, so its parent and siblings survive.
+
+Ctrl+C itself is also more reliable now that `turbo.json` uses `"ui": "stream"`
+instead of the interactive TUI, which was swallowing the signal. Switch back to
+`"tui"` if you prefer the nicer output and Ctrl+C behaves in your terminal.
+
+**Stale server serving old code.** Same cause — run `pnpm stop`, then `pnpm dev`.
+
+**Web app returning 500 with `ENOENT ... _buildManifest.js.tmp`.** The `.next`
+directory is corrupted, usually from running `pnpm build` while `pnpm dev` was live.
+Stop everything, delete `apps/web/.next`, and start again.
 
 **`P1000: Authentication failed`.** Something other than the VedaAI container is
 answering on the Postgres port — usually a native PostgreSQL Windows service. Check
