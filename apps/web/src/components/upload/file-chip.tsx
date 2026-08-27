@@ -14,27 +14,21 @@ export interface UploadedFile {
 }
 
 /**
- * The filled-state card from the design: a red PDF badge, the filename, and a
- * "2MB • 2 Pages" meta line, with a remove control in the corner.
+ * The filled-state card from the design: a red PDF badge, the filename, and a "2MB • 2
+ * Pages" meta line, with a remove control in the corner.
  */
-export function FileChip({
-  file,
-  onRemove,
-}: {
-  file: UploadedFile;
-  onRemove: () => void;
-}) {
+export function FileChip({ file, onRemove }: { file: UploadedFile; onRemove: () => void }) {
   const pages = formatPageCount(file.pageCount);
   const uploading = file.progress < 100 && !file.error;
 
   return (
-    <div className="relative flex h-[104px] w-full items-center justify-center rounded-drop border border-dashed border-ink-300 bg-white px-4 sm:h-[118px]">
+    <div className="rounded-drop border-ink-300 relative flex h-[104px] w-full items-center justify-center border border-dashed bg-white px-4 sm:h-[118px]">
       <div className="flex min-w-0 items-center gap-2.5">
         <FileBadge name={file.name} />
 
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-semibold text-ink-900">{file.name}</p>
-          <p className="mt-0.5 text-[11.5px] text-ink-400">
+          <p className="text-ink-900 truncate text-[13px] font-semibold">{file.name}</p>
+          <p className="text-ink-400 mt-0.5 text-[11.5px]">
             {file.error ? (
               <span className="text-danger-600">{file.error}</span>
             ) : (
@@ -47,9 +41,9 @@ export function FileChip({
           </p>
 
           {uploading && (
-            <span className="mt-1.5 block h-1 w-full overflow-hidden rounded-full bg-ink-100">
+            <span className="bg-ink-100 mt-1.5 block h-1 w-full overflow-hidden rounded-full">
               <span
-                className="block h-full rounded-full bg-brand-500 transition-[width] duration-200"
+                className="bg-brand-500 block h-full rounded-full transition-[width] duration-200"
                 style={{ width: `${file.progress}%` }}
               />
             </span>
@@ -61,7 +55,7 @@ export function FileChip({
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${file.name}`}
-        className="absolute right-2.5 top-2.5 flex size-[18px] items-center justify-center rounded-full bg-ink-900 text-white transition-colors hover:bg-ink-700"
+        className="bg-ink-900 hover:bg-ink-700 absolute right-2.5 top-2.5 flex size-[18px] items-center justify-center rounded-full text-white transition-colors"
       >
         <X className="size-3" strokeWidth={2.5} />
       </button>

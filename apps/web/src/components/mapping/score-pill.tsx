@@ -1,9 +1,6 @@
 import { cn } from '@/lib/utils';
 
-/**
- * The "3/3" chip. Green at full marks, amber for partial, red for zero — the
- * colour coding from the mapping screen in the design.
- */
+/** The "3/3" chip. */
 export function ScorePill({
   awarded,
   max,
@@ -15,7 +12,7 @@ export function ScorePill({
 }) {
   if (awarded === null) {
     return (
-      <span className="rounded px-1.5 py-px text-[11px] font-bold tabular-nums text-ink-300">
+      <span className="text-ink-300 rounded px-1.5 py-px text-[11px] font-bold tabular-nums">
         –/{formatMarks(max)}
       </span>
     );
@@ -33,7 +30,7 @@ export function ScorePill({
           : ratio > 0
             ? 'bg-warning-100 text-warning-600'
             : 'bg-danger-100 text-danger-600',
-        overridden && 'ring-1 ring-ink-300',
+        overridden && 'ring-ink-300 ring-1',
       )}
     >
       {formatMarks(awarded)}/{formatMarks(max)}

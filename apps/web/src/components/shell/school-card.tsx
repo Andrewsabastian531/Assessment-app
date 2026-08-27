@@ -1,18 +1,8 @@
 import { cn } from '@/lib/utils';
 import type { SidebarSchool } from './sidebar';
 
-
-/**
- * The school crest. Falls back to a drawn emblem when no crest image is set, so
- * the sidebar never shows a broken image or an empty box.
- */
-export function SchoolCrest({
-  school,
-  className,
-}: {
-  school: SidebarSchool;
-  className?: string;
-}) {
+/** The school crest. */
+export function SchoolCrest({ school, className }: { school: SidebarSchool; className?: string }) {
   if (school.crestUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -27,7 +17,7 @@ export function SchoolCrest({
   return (
     <span
       className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-full bg-success-50 ring-1 ring-success-100',
+        'bg-success-50 ring-success-100 flex size-8 shrink-0 items-center justify-center rounded-full ring-1',
         className,
       )}
       aria-hidden="true"
@@ -51,14 +41,14 @@ export function SchoolCrest({
 
 export function SchoolCard({ school }: { school: SidebarSchool }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-card border border-ink-200 bg-white px-2.5 py-2 shadow-card">
+    <div className="rounded-card border-ink-200 shadow-card flex items-center gap-2.5 border bg-white px-2.5 py-2">
       <SchoolCrest school={school} />
       <span className="min-w-0">
-        <span className="block truncate text-[12.5px] font-semibold leading-tight text-ink-900">
+        <span className="text-ink-900 block truncate text-[12.5px] font-semibold leading-tight">
           {school.name}
         </span>
         {school.city && (
-          <span className="block truncate text-[11px] leading-tight text-ink-500">
+          <span className="text-ink-500 block truncate text-[11px] leading-tight">
             {school.city}
           </span>
         )}

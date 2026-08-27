@@ -2,8 +2,8 @@ import { ArgumentMetadata, BadRequestException, PipeTransform } from '@nestjs/co
 import { ZodError, ZodSchema } from 'zod';
 
 /**
- * Validates a request body against a Zod schema from @vedaai/shared, so the API
- * and the web client are guaranteed to agree on every payload shape.
+ * Validates a request body against a Zod schema from @vedaai/shared, so the API and the
+ * web client are guaranteed to agree on every payload shape.
  */
 export class ZodValidationPipe implements PipeTransform {
   constructor(private readonly schema: ZodSchema) {}

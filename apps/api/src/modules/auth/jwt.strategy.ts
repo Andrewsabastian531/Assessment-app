@@ -5,19 +5,14 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { jwtClaimsSchema } from '@vedaai/shared';
 import type { AuthenticatedUser } from '@/common/current-user.decorator';
 
-/**
- * Verifies the JWT that Auth.js (on the web app) signs with AUTH_SECRET. Both
- * sides must share the exact same secret — there is no session store and no
- * extra network hop.
- */
+/** Verifies the JWT the API issued, signed with AUTH_SECRET. */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
-        // Auth.js stores the token in an httpOnly cookie; accept it from there
-        // too so server-side fetches work without manual header plumbing.
+        // The web app keeps the token in an httpOnly cookie, so accept it there too.
         (request) => request?.cookies?.['vedaai.token'] ?? null,
       ]),
       ignoreExpiration: false,

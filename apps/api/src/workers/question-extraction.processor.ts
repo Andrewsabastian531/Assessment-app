@@ -10,9 +10,7 @@ import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
 import { QUEUES, type PipelineJobData } from '@/modules/queue/queue.constants';
 
-/**
- * Stage 2. Question paper → editable rubric (questions, sub-questions, marks).
- */
+/** Stage 2. */
 @Processor(QUEUES.QUESTION_EXTRACTION)
 export class QuestionExtractionProcessor extends WorkerHost {
   private readonly logger = new Logger(QuestionExtractionProcessor.name);
@@ -92,13 +90,7 @@ export class QuestionExtractionProcessor extends WorkerHost {
 
     this.logger.log(`Extracted ${created} questions for assessment ${assessmentId}`);
     this.events.extractionCompleted({ jobId, assessmentId, questionCount: created });
-    this.events.progress(
-      jobId,
-      'QUESTION_EXTRACTION',
-      1,
-      1,
-      `Found ${created} questions`,
-    );
+    this.events.progress(jobId, 'QUESTION_EXTRACTION', 1, 1, `Found ${created} questions`);
 
     return { questionCount: created };
   }

@@ -1,7 +1,4 @@
-/**
- * Canonical enums shared by the API, the worker pipeline and the web client.
- * These mirror the Prisma enums one-for-one — keep both sides in sync.
- */
+/** Canonical enums shared by the API, the worker pipeline and the web client. */
 
 export const UserRole = {
   TEACHER: 'TEACHER',
@@ -69,10 +66,7 @@ export const JobStatus = {
 } as const;
 export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
 
-/**
- * Human-readable stage labels surfaced on the "Extracting…" screen.
- * The order here is the order the pipeline runs in.
- */
+/** Human-readable stage labels surfaced on the "Extracting…" screen. */
 export const PIPELINE_STAGES = [
   'INGEST',
   'QUESTION_EXTRACTION',

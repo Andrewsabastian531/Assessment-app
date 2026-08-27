@@ -1,9 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  BoundingBox,
-  OverrideEvaluationInput,
-  ReviewPayload,
-} from '@vedaai/shared';
+import type { BoundingBox, OverrideEvaluationInput, ReviewPayload } from '@vedaai/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import type { AuthenticatedUser } from '@/common/current-user.decorator';
@@ -15,15 +11,8 @@ export class SubmissionsService {
     private readonly storage: StorageService,
   ) {}
 
-  /**
-   * Everything the review screen needs in one round-trip: the questions list on
-   * the left, the page images and bounding boxes on the right, and the marks and
-   * feedback that tie them together.
-   */
-  async getReviewPayload(
-    user: AuthenticatedUser,
-    submissionId: string,
-  ): Promise<ReviewPayload> {
+  /** Everything the review screen needs, in a single round-trip. */
+  async getReviewPayload(user: AuthenticatedUser, submissionId: string): Promise<ReviewPayload> {
     const submission = await this.prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
@@ -136,15 +125,15 @@ export class SubmissionsService {
     if (!page) throw new NotFoundException('Page not found');
     this.assertOwner(user, page.submission.assessment.teacherId);
 
-    return { url: await this.storage.presignGet(page.imageKey), width: page.width, height: page.height };
+    return {
+      url: await this.storage.presignGet(page.imageKey),
+      width: page.width,
+      height: page.height,
+    };
   }
 
   /** Manual mark override, with an audit row so the change is attributable. */
-  async override(
-    user: AuthenticatedUser,
-    evaluationId: string,
-    input: OverrideEvaluationInput,
-  ) {
+  async override(user: AuthenticatedUser, evaluationId: string, input: OverrideEvaluationInput) {
     const evaluation = await this.prisma.evaluation.findUnique({
       where: { id: evaluationId },
       include: {
@@ -154,10 +143,7 @@ export class SubmissionsService {
     if (!evaluation) throw new NotFoundException('Evaluation not found');
     this.assertOwner(user, evaluation.submission.assessment.teacherId);
 
-    const awardedMarks = Math.min(
-      evaluation.maxMarks,
-      Math.max(0, input.awardedMarks),
-    );
+    const awardedMarks = Math.min(evaluation.maxMarks, Math.max(0, input.awardedMarks));
 
     const [updated] = await this.prisma.$transaction([
       this.prisma.evaluation.update({

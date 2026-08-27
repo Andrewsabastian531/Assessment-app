@@ -1,7 +1,7 @@
 import type { ZodType, ZodTypeDef } from 'zod';
 
 export interface VlmImage {
-  /** Raw image bytes. Providers base64-encode these themselves. */
+  /** Raw image bytes. */
   data: Buffer;
   mimeType: string;
 }
@@ -11,11 +11,7 @@ export interface VlmRequest<T> {
   system: string;
   prompt: string;
   images: VlmImage[];
-  /**
-    * Response is constrained to this schema and validated before returning.
-    * The Input parameter is left open because `.default()` makes a field
-    * optional on input while it is required on output.
-    */
+  /** Response is constrained to this schema and validated before returning. */
   schema: ZodType<T, ZodTypeDef, unknown>;
   schemaName: string;
 }
@@ -28,8 +24,8 @@ export interface VlmResponse<T> {
 }
 
 /**
- * Every vision/grading call goes through this interface, so switching providers
- * is an env change (AI_PROVIDER) rather than a code change.
+ * Every vision/grading call goes through this interface, so switching providers is an
+ * env change (AI_PROVIDER) rather than a code change.
  */
 export interface VlmProvider {
   readonly name: string;

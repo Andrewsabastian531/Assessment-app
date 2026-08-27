@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { EvaluationVerdict, JobStatus, PipelineStage } from './enums';
 
-/**
- * WebSocket contract. Both the NestJS gateway and the Next.js client import
- * these names — a typo becomes a compile error rather than a silent no-op.
- */
+/** WebSocket contract. */
 export const SERVER_EVENTS = {
   JOB_QUEUED: 'job.queued',
   JOB_PROGRESS: 'job.progress',
@@ -26,8 +23,6 @@ export type ClientEventName = (typeof CLIENT_EVENTS)[keyof typeof CLIENT_EVENTS]
 
 export const jobRoom = (jobId: string) => `job:${jobId}`;
 export const submissionRoom = (submissionId: string) => `submission:${submissionId}`;
-
-/* ----------------------------- payloads ----------------------------- */
 
 export const jobQueuedPayloadSchema = z.object({
   jobId: z.string(),
@@ -111,9 +106,7 @@ export interface ServerToClientEvents {
   [SERVER_EVENTS.PAGE_RASTERIZED]: (p: PageRasterizedPayload) => void;
   [SERVER_EVENTS.EXTRACTION_COMPLETED]: (p: ExtractionCompletedPayload) => void;
   [SERVER_EVENTS.MAPPING_COMPLETED]: (p: MappingCompletedPayload) => void;
-  [SERVER_EVENTS.EVALUATION_QUESTION_COMPLETED]: (
-    p: EvaluationQuestionCompletedPayload,
-  ) => void;
+  [SERVER_EVENTS.EVALUATION_QUESTION_COMPLETED]: (p: EvaluationQuestionCompletedPayload) => void;
   [SERVER_EVENTS.JOB_COMPLETED]: (p: JobCompletedPayload) => void;
   [SERVER_EVENTS.JOB_FAILED]: (p: JobFailedPayload) => void;
 }
@@ -124,10 +117,7 @@ export interface ClientToServerEvents {
   [CLIENT_EVENTS.UNSUBSCRIBE]: (p: { room: string }) => void;
 }
 
-/**
- * Relative weight of each stage in the overall progress bar. Layout analysis and
- * evaluation dominate wall-clock time, so they get the widest bands.
- */
+/** Relative weight of each stage in the overall progress bar. */
 export const STAGE_WEIGHTS: Record<PipelineStage, number> = {
   INGEST: 10,
   QUESTION_EXTRACTION: 20,

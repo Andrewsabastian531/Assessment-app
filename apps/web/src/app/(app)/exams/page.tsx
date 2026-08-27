@@ -9,8 +9,8 @@ interface AssessmentSummary {
 }
 
 /**
- * The exam list UI is not designed yet, so this lands on the most recently
- * updated exam's upload screen — the flow the Figma screens actually cover.
+ * The exam list UI is not designed yet, so this lands on the most recently updated
+ * exam's upload screen — the flow the Figma screens actually cover.
  */
 export default async function ExamsPage() {
   const token = (await cookies()).get(TOKEN_COOKIE)?.value;

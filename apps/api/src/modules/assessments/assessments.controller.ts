@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import {
   confirmUploadSchema,
   createAssessmentSchema,
@@ -62,10 +53,7 @@ export class AssessmentsController {
 
   @Delete('assets/:assetId')
   @HttpCode(204)
-  async deleteAsset(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('assetId') assetId: string,
-  ) {
+  async deleteAsset(@CurrentUser() user: AuthenticatedUser, @Param('assetId') assetId: string) {
     await this.assessments.deleteAsset(user, assetId);
   }
 

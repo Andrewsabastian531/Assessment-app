@@ -6,8 +6,8 @@ import { AuthForm } from './auth-form';
 export const metadata: Metadata = { title: 'Sign in' };
 
 /**
- * Asks the API which social providers it can actually serve, so the page never
- * shows a Google button that would fail the moment it is clicked.
+ * Asks the API which social providers it can actually serve, so the page never shows a
+ * Google button that would fail the moment it is clicked.
  */
 async function googleEnabled(): Promise<boolean> {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return false;
@@ -27,7 +27,7 @@ export default async function SignInPage() {
   const google = await googleEnabled();
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-surface-muted px-4 py-10">
+    <div className="bg-surface-muted flex min-h-dvh items-center justify-center px-4 py-10">
       <Suspense>
         <AuthForm googleEnabled={google} />
       </Suspense>

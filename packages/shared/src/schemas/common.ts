@@ -3,8 +3,8 @@ import { z } from 'zod';
 export const cuidSchema = z.string().min(1, 'Required');
 
 /**
- * Bounding boxes are stored NORMALISED (0..1) relative to the page image so the
- * canvas overlay stays correct at any zoom level or device pixel ratio.
+ * Bounding boxes are stored NORMALISED (0..1) relative to the page image so the canvas
+ * overlay stays correct at any zoom level or device pixel ratio.
  */
 export const boundingBoxSchema = z.object({
   x: z.number().min(0).max(1),

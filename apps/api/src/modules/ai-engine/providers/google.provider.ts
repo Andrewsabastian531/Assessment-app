@@ -13,11 +13,7 @@ interface GeminiResponse {
   error?: { message?: string; status?: string };
 }
 
-/**
- * Google AI Studio (Gemini). Uses native structured output — `responseSchema`
- * constrains generation, so the reply is valid JSON without prompt-level
- * pleading or brittle markdown-fence stripping.
- */
+/** Google AI Studio (Gemini). */
 export class GoogleVlmProvider implements VlmProvider {
   readonly name = 'google';
   private readonly logger = new Logger(GoogleVlmProvider.name);
@@ -83,24 +79,19 @@ export class GoogleVlmProvider implements VlmProvider {
       error?: { message?: string };
     }
 
-    const payload = await this.post<BatchEmbedResponse>(
-      `/models/${model}:batchEmbedContents`,
-      {
-        requests: texts.map((text) => ({
-          model: `models/${model}`,
-          content: { parts: [{ text }] },
-          // gemini-embedding-001 returns 3072 dimensions unless asked otherwise.
-          // The pgvector column is fixed-width, so this must be explicit.
-          outputDimensionality: this.embeddingDimensions,
-        })),
-      },
-    );
+    const payload = await this.post<BatchEmbedResponse>(`/models/${model}:batchEmbedContents`, {
+      requests: texts.map((text) => ({
+        model: `models/${model}`,
+        content: { parts: [{ text }] },
+        // gemini-embedding-001 returns 3072 dimensions unless asked otherwise.
+        // The pgvector column is fixed-width, so this must be explicit.
+        outputDimensionality: this.embeddingDimensions,
+      })),
+    });
 
     const embeddings = payload.embeddings?.map((entry) => entry.values);
     if (!embeddings || embeddings.length !== texts.length) {
-      throw new Error(
-        `Expected ${texts.length} embeddings, received ${embeddings?.length ?? 0}`,
-      );
+      throw new Error(`Expected ${texts.length} embeddings, received ${embeddings?.length ?? 0}`);
     }
 
     const width = embeddings[0]?.length ?? 0;
@@ -114,11 +105,7 @@ export class GoogleVlmProvider implements VlmProvider {
     return embeddings;
   }
 
-  /**
-   * Retries on 429 and 5xx with exponential backoff. The free tier is
-   * rate-limited per minute, so a burst of page workers will hit 429 routinely —
-   * that is expected, not an error worth failing the job over.
-   */
+  /** Retries on 429 and 5xx with exponential backoff. */
   private async post<T>(path: string, body: unknown): Promise<T> {
     if (!this.apiKey) {
       throw new Error(

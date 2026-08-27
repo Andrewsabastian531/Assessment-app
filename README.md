@@ -1,412 +1,312 @@
-# VedaAI — AI-Powered Exam Grading
+# VedaAI
 
-Teachers upload a question paper and a student's answer sheet. The system extracts a
-rubric, reads the handwriting, matches each answer to its question, grades against the
-rubric, and hands back a side-by-side review screen with bounding boxes and per-question
-marks the teacher can override.
+Grading a class set of exam papers takes a teacher hours. VedaAI does the first pass in
+minutes and leaves the teacher in charge of the result.
 
----
+A teacher uploads two files — the question paper and a student's answer sheet. The system
+reads both, works out which scribble on the page answers which question, marks each answer
+against the rubric, and returns a side-by-side review screen: the student's handwriting on
+the right with each answer boxed in green, the marks and reasoning on the left. Every mark
+can be changed by hand before it is finalised.
 
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  apps/web — Next.js 15 (App Router)                                  │
-│  Tailwind v4 · shadcn-style primitives · Lucide · TanStack Query      │
-│  PDF.js + canvas overlay · socket.io-client                          │
-└───────────┬──────────────────────────────────────┬───────────────────┘
-            │ REST /api/v1 (JWT bearer)            │ WebSocket /events
-            ▼                                      ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│  apps/api — NestJS 11                                                │
-│  AuthModule · AssessmentsModule · SubmissionsModule · StorageModule   │
-│  AiEngineModule · EvaluationModule · EventsGateway · QueueModule      │
-└───┬─────────────────┬──────────────────┬─────────────────────────────┘
-    │                 │                  │
-    ▼                 ▼                  ▼
-┌─────────┐    ┌─────────────┐    ┌──────────────────┐
-│ Postgres│    │ Redis       │    │ Cloudflare R2    │
-│ pgvector│    │ BullMQ      │    │ (MinIO locally)  │
-└─────────┘    └──────┬──────┘    └──────────────────┘
-                      │
-                      ▼  workers
-   ingest → question-extraction ┐
-          → layout-analysis ────┼→ mapping → evaluation → aggregation
-                                ┘
-```
-
-The file bytes never pass through the API. The browser gets a pre-signed PUT URL and
-uploads straight to object storage; the API only ever handles keys and metadata.
-
-### Packages
-
-| Path | Purpose |
-|---|---|
-| `apps/web` | Next.js frontend |
-| `apps/api` | NestJS API + BullMQ pipeline workers |
-| `packages/shared` | Zod schemas + TypeScript types shared by both apps. Single source of truth for API DTOs, VLM structured outputs and WebSocket payloads |
-| `packages/database` | Prisma schema, generated client, migrations, seed |
-| `packages/typescript-config` | Shared `tsconfig` presets |
+Nothing is graded silently. The AI proposes; the teacher decides.
 
 ---
 
-## Local development
+## How it works
 
-### Prerequisites
+Six stages run in the background after the teacher presses **Start Mapping**. Each is a
+separate queued job, so a failure in one retries on its own instead of restarting the lot.
 
-- **Node.js** ≥ 20.11 (this repo was set up on v24)
-- **pnpm** 9 — `npm install -g pnpm@9`
-  On Windows, make sure `%APPDATA%\npm` is on your `PATH`. `corepack enable` needs an
-  admin shell because it writes into `C:\Program Files\nodejs`.
-- **Docker Desktop** — for Postgres, Redis and MinIO
+| # | Stage | What happens |
+|---|---|---|
+| 1 | **Ingest** | The upload (PDF, JPG, PNG or HEIC) becomes one normalised PNG per page |
+| 2 | **Question extraction** | A vision model reads the question paper into a rubric: questions, sub-questions, marks |
+| 3 | **Layout analysis** | Each answer page is split into regions, marked as printed or handwriting, and transcribed |
+| 4 | **Mapping** | Each answer region is paired with the question it answers |
+| 5 | **Evaluation** | Every question is graded against the rubric — marks, verdict, step-by-step reasoning |
+| 6 | **Aggregation** | Totals are computed and the paper is released for review |
 
-### 1. Install
+Stages 3 and 5 fan out — one job per page, one job per question — and the pipeline waits for
+all of them before continuing. The teacher watches this happen live; progress arrives over a
+WebSocket rather than by polling.
+
+### Matching answers to questions
+
+This is the part that decides whether the whole thing works. It uses three signals, in
+descending order of trust:
+
+1. **A printed label.** If the model reads a "Q2" or "3." at the start of a region, that is
+   near-decisive and nothing else needs to run.
+2. **Meaning.** Otherwise the question and the answer are both turned into vectors and
+   compared by cosine similarity. An answer about photosynthesis finds the photosynthesis
+   question with no label in sight.
+3. **Word overlap.** If the embedding service is unreachable, it compares words directly.
+   Worse, but the pipeline degrades instead of failing.
+
+Anything below the confidence threshold is left unmatched rather than guessed, and appears
+in review as a question with no answer found.
+
+### Grading
+
+Each question is sent with its rubric, the transcribed answer, and a **cropped image of the
+actual handwriting** — so diagrams and mathematical notation are judged from the page rather
+than from a flattened transcription. The model returns marks, a verdict, per-step credit or
+deductions, and a confidence score.
+
+Awarded marks are clamped to the question maximum before they reach the database, because a
+schema cannot express "no more than this question is worth". A mark the teacher has
+overridden is never overwritten by a re-run.
+
+---
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Monorepo | Turborepo + pnpm workspaces | One install, one command, shared types across apps |
+| Frontend | Next.js 15 (App Router), React 19 | Server components for the authenticated shell |
+| Styling | Tailwind CSS v4 | Design tokens declared in CSS, no config file |
+| UI | Radix primitives, Lucide icons | Accessible behaviour without adopting a whole design system |
+| Data fetching | TanStack Query | Cache invalidation after a mark is overridden |
+| Backend | NestJS 11 | Modules and dependency injection suit a pipeline this size |
+| Queue | BullMQ + Redis | Retries, per-stage concurrency, fan-out and fan-in |
+| Database | PostgreSQL + pgvector | Relational data and vector search in one place |
+| ORM | Prisma | Typed queries and versioned migrations |
+| Storage | Cloudflare R2 (MinIO locally) | S3 API, no egress fees |
+| Realtime | Socket.io | Live progress during grading |
+| Validation | Zod | One schema for the API, the client and the AI output |
+| AI | Google Gemini (swappable) | Free tier, vision plus structured JSON output |
+
+Two decisions worth explaining:
+
+**Files never pass through the API.** The browser asks for a pre-signed URL and uploads
+straight to object storage. An 8 MB scan routed through Node would block the event loop for
+no benefit; the API only ever handles keys and metadata.
+
+**One schema, three jobs.** Each Zod schema in `packages/shared` validates the HTTP request,
+types the React component, *and* becomes the JSON Schema that constrains the model's output.
+The client and server cannot drift, and a malformed AI response is caught at the boundary
+instead of corrupting a row.
+
+---
+
+## Running it locally
+
+### What you need
+
+- **Node.js 20.11+**
+- **pnpm 9** — `npm install -g pnpm@9`
+- **Docker Desktop** — runs the database, queue and file storage
+
+### Five steps
 
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env      # then set AUTH_SECRET and GOOGLE_AI_API_KEY
+pnpm infra:up             # Postgres, Redis and MinIO in Docker
+pnpm db:migrate && pnpm db:seed
+pnpm dev
 ```
 
-### 2. Start infrastructure — **Checkpoint B**
+Open **http://localhost:3000**. Sign in with the seeded account
+`madhur@vedaai.test` / `vedaai123`, or create your own from the sign-up tab.
+
+Two values in `.env` matter before you start:
+
+- `AUTH_SECRET` — any random string. `openssl rand -base64 32` produces one.
+- `GOOGLE_AI_API_KEY` — free from [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+  Everything up to page rasterisation works without it; grading does not.
+
+Check the AI is reachable before uploading anything:
 
 ```bash
-pnpm infra:up          # postgres(pgvector) + redis + minio, all on localhost
+curl http://localhost:4000/api/v1/health/ai
 ```
 
-| Service | URL | Credentials |
-|---|---|---|
-| Postgres | `localhost:5434` | `vedaai` / `vedaai` |
-| Redis | `localhost:6380` | — |
-| MinIO API | `http://localhost:9002` | `vedaai` / `vedaai-secret` |
-| MinIO console | `http://localhost:9003` | same |
+### Commands
 
-> **Why non-default ports?** These are deliberately off the standard numbers. A
-> native PostgreSQL Windows service commonly owns 5432 and wins the bind over
-> Docker, which produces a confusing `P1000: Authentication failed` because
-> Prisma is talking to the *other* Postgres. Using 5434/6380/9002 keeps VedaAI
-> isolated from anything else already running on the machine.
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Run the web app and API together |
+| `pnpm stop` | Stop them and free ports 3000 and 4000 |
+| `pnpm build` | Build everything |
+| `pnpm typecheck` | Type-check every package |
+| `pnpm infra:up` / `infra:down` | Start / stop the Docker services |
+| `pnpm infra:reset` | Stop and **delete all local data** |
+| `pnpm db:migrate` | Apply schema changes |
+| `pnpm db:seed` | Insert the demo teacher and exam |
+| `pnpm db:studio` | Browse the database in a GUI |
 
-The `pgvector/pgvector:pg16` image is required — the plain `postgres` image will fail the
-migration because the schema declares `vector(768)` columns.
-
-Prefer hosted? Swap `DATABASE_URL` for a **Supabase** or **Neon** connection string and
-`REDIS_URL` for an **Upstash** one (note: Upstash needs `rediss://`, with two `s`). On a
-pooled Postgres connection you must also set `DIRECT_URL` to the direct (non-pooled)
-string — Prisma Migrate issues DDL that a connection pooler cannot proxy.
-
-### 3. Migrate + seed
-
-```bash
-pnpm db:migrate        # creates the schema and the pgvector extension
-pnpm db:seed           # Delhi Public School + Madhur Rastogi + a demo exam
-pnpm db:studio         # optional: browse the data
-```
-
-Seeded login: `madhur@vedaai.test` / `vedaai123`
-
-### 4. Run
-
-```bash
-pnpm dev               # turbo runs every app in parallel
-```
-
-- Web → http://localhost:3000
-- API → http://localhost:4000
-
-**UI-only preview.** Set `NEXT_PUBLIC_UI_PREVIEW=1` in `.env` to simulate uploads in the
-browser and click through the screens with no API running. It defaults to `0` so a
-misconfigured deploy fails loudly instead of faking success.
+Local ports are deliberately non-standard so they cannot collide with a Postgres or Redis
+already installed on your machine: Postgres **5434**, Redis **6380**, MinIO **9002**
+(console **9003**).
 
 ---
 
-## Environment variables
+## Project structure
 
-Everything lives in one root `.env`; Turborepo passes it to both apps. See
-[`.env.example`](.env.example) for the annotated version.
-
-| Group | Keys |
-|---|---|
-| Database | `DATABASE_URL`, `DIRECT_URL` |
-| Queue | `REDIS_URL`, `WORKER_CONCURRENCY` |
-| Auth | `AUTH_SECRET`, `JWT_EXPIRES_IN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` |
-| Storage | `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, `S3_FORCE_PATH_STYLE`, `S3_PUBLIC_URL` |
-| AI | `AI_PROVIDER`, `AI_VISION_MODEL`, `AI_GRADING_MODEL`, plus the provider key |
-| Embeddings | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` |
-| Services | `API_PORT`, `WEB_PORT`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL`, `CORS_ORIGINS` |
-
-`AUTH_SECRET` must be **identical** for web and api — the API signs the JWT with it
-and NestJS verifies it on every request. Generate one with `openssl rand -base64 32`.
-
-### How auth works
-
-**Email + password**
-
-1. `/sign-in` posts to a Next route handler (`/api/auth/login` or `/api/auth/register`).
-2. That handler calls the API, which validates with Zod, hashes with bcrypt, and
-   returns a signed JWT.
-3. The handler stores the JWT in an **httpOnly** cookie (`vedaai.token`) — it never
-   reaches client JS, so an XSS cannot exfiltrate it.
-4. The browser replays that cookie to the API automatically: `localhost:3000` and
-   `localhost:4000` are the *same site* (ports do not create a new site), so a
-   `SameSite=Lax` cookie crosses the port boundary.
-5. NestJS's `JwtStrategy` accepts the token from the cookie **or** an
-   `Authorization: Bearer` header, so server components, the browser and `curl`
-   all pass through the same guard.
-
-**Google OAuth**
-
-`/api/auth/google/start` → Google consent → `/api/auth/google/callback`. The callback
-exchanges the code for an ID token and posts it to the API, which **re-verifies it
-with Google** before trusting any field. Two details that matter:
-
-- `state` is stored in a short-lived httpOnly cookie and compared on return — this
-  is what prevents login CSRF.
-- The API checks the token's `aud` against `GOOGLE_CLIENT_ID`. Without that, a token
-  minted for *any* Google app would be accepted.
-
-The web app never decides who the user is; it only relays. A Google identity whose
-verified email matches an existing password account is **linked** to it rather than
-creating a second user.
-
-With `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` unset, `GET /auth/providers` reports
-`{"google": false}` and the button is not rendered at all.
-
-Setup: console.cloud.google.com → APIs & Services → Credentials → Create OAuth client
-ID → Web application, with authorised redirect URI
-`http://localhost:3000/api/auth/google/callback`.
-
-### User table
-
-Sign-up collects exactly these fields:
-
-| Column | Notes |
-|---|---|
-| `firstName` | The greeting uses this alone ("Welcome back, Priya") |
-| `lastName` | Separate so users can be sorted and searched by surname |
-| `email` | Unique, lower-cased on write |
-| `passwordHash` | bcrypt; **null** for OAuth-only accounts |
-| `schoolId` | FK to `schools`, resolved from the school name typed at sign-up |
-| `role` | `TEACHER` or `ADMIN` |
-| `avatarUrl` | Taken from the Google profile picture when present |
-
-School names are matched **case-insensitively**, so "Delhi Public School" and
-"delhi public school" resolve to the same `schools` row instead of duplicating it.
-
-### Cloudflare R2 (production storage)
-
-1. Cloudflare dashboard → **R2** → create bucket `vedaai-uploads`
-2. **Manage API Tokens** → create a token with *Object Read & Write*
-3. Fill in the R2 block in `.env` (the commented section)
-4. Add a CORS policy to the bucket, or the browser's direct PUT is blocked:
-
-```json
-[{ "AllowedOrigins": ["http://localhost:3000"],
-   "AllowedMethods": ["PUT", "GET", "HEAD"],
-   "AllowedHeaders": ["*"],
-   "ExposeHeaders": ["ETag"] }]
 ```
+apps/
+  web/                     Next.js frontend
+    src/app/               routes (App Router)
+    src/components/        shell, upload, mapping, viewer, ui primitives
+    src/hooks/             upload and live-progress hooks
+    src/lib/               API client, session, OAuth helpers
+  api/                     NestJS backend
+    src/modules/           auth, assessments, submissions, storage,
+                           ai-engine, events, queue, prisma, health
+    src/workers/           the six pipeline stages
+packages/
+  shared/                  Zod schemas and types used by both apps
+  database/                Prisma schema, migrations, seed
+  typescript-config/       shared tsconfig presets
+```
+
+### The AI layer is swappable
+
+`AI_PROVIDER` selects between Google, OpenRouter, OpenCode Zen, OpenAI and Ollama. Every
+model call goes through one interface, so changing provider is an environment change, never
+a code change. The only hard requirements are **image input** and **structured JSON output**
+— not every free model has both, which is why `/health/ai` exists.
 
 ---
 
-## API routes
+## API
 
-All under `/api/v1`, all JWT-guarded except `/auth/*` and `/health*`. Request and
-response shapes are the Zod schemas in `packages/shared`, so the client and server
-cannot drift.
+Everything lives under `/api/v1`. All routes require a JWT except `/auth/*` and `/health*`.
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/auth/login` | Email + password → JWT |
-| `POST` | `/auth/register` | Create teacher account (first/last name, school, email) |
-| `POST` | `/auth/oauth/exchange` | Verify a provider ID token, link or create the user |
-| `GET` | `/auth/providers` | Which social providers this server can serve |
-| `GET` | `/auth/me` | Current session user |
-| `GET` | `/assessments` | List exams |
-| `POST` | `/assessments` | Create exam |
-| `GET` | `/assessments/:id` | Exam detail + assets |
-| `POST` | `/assessments/:id/uploads/presign` | Pre-signed PUT URL |
-| `POST` | `/assessments/:id/uploads/confirm` | Mark asset uploaded |
-| `DELETE` | `/assets/:id` | Remove a file chip |
-| `POST` | `/assessments/:id/start-mapping` | Enqueue the pipeline → `{ jobId, submissionId }` |
-| `GET` | `/assessments/:id/questions` | Extracted rubric |
-| `PATCH` | `/questions/:id` | Edit a question / its marks |
-| `GET` | `/submissions/:id` | Full review payload (questions + pages + regions + evaluations) |
-| `GET` | `/submissions/:id/pages/:idx/url` | Signed GET for a page image |
-| `PATCH` | `/evaluations/:id/override` | Manual mark override |
+| `POST` | `/auth/register` | Create an account |
+| `POST` | `/auth/login` | Email and password, returns a JWT |
+| `POST` | `/auth/oauth/exchange` | Verify a Google ID token, link or create the user |
+| `GET` | `/auth/providers` | Which social logins this server can serve |
+| `GET` | `/auth/me` | The signed-in teacher |
+| `GET` `POST` | `/assessments` | List and create exams |
+| `GET` | `/assessments/:id` | Exam detail and its files |
+| `POST` | `/assessments/:id/uploads/presign` | Get a pre-signed upload URL |
+| `POST` | `/assessments/:id/uploads/confirm` | Mark an upload complete |
+| `DELETE` | `/assets/:id` | Remove an uploaded file |
+| `POST` | `/assessments/:id/start-mapping` | Start the pipeline |
+| `GET` | `/assessments/:id/questions` | The extracted rubric |
+| `PATCH` | `/questions/:id` | Edit a question or its marks |
+| `GET` | `/submissions/:id` | Everything the review screen needs |
+| `GET` | `/submissions/:id/pages/:idx/url` | Signed URL for a page image |
+| `PATCH` | `/evaluations/:id/override` | Change a mark by hand |
 | `POST` | `/submissions/:id/finalize` | Lock the result |
+| `GET` | `/health`, `/health/ai` | Database and AI reachability |
 
-## WebSocket events
+### WebSocket events
 
-Namespace `/events`. Rooms: `job:{jobId}` and `submission:{submissionId}`.
-Payload types live in [`packages/shared/src/events.ts`](packages/shared/src/events.ts).
+Namespace `/events`. Clients join `job:{jobId}` or `submission:{id}`.
 
-**Client → server**
-
-| Event | Payload |
+| Event | When |
 |---|---|
-| `subscribe.job` | `{ jobId }` |
-| `subscribe.submission` | `{ submissionId }` |
-| `unsubscribe` | `{ room }` |
+| `job.queued` | Pipeline accepted |
+| `job.progress` | Stage advanced; carries an overall percentage |
+| `page.rasterized` | A page image is ready |
+| `extraction.completed` | Rubric extracted |
+| `mapping.completed` | Answers paired with questions |
+| `evaluation.question.completed` | One question graded |
+| `job.completed` | Paper ready for review |
+| `job.failed` | A stage exhausted its retries |
 
-**Server → client**
-
-| Event | Payload |
-|---|---|
-| `job.queued` | `{ jobId, submissionId, assessmentId, status }` |
-| `job.progress` | `{ jobId, stage, current, total, percent, message }` |
-| `page.rasterized` | `{ jobId, submissionId, pageIndex, totalPages }` |
-| `extraction.completed` | `{ jobId, assessmentId, questionCount }` |
-| `mapping.completed` | `{ jobId, submissionId, matched, unmatched }` |
-| `evaluation.question.completed` | `{ jobId, submissionId, questionId, questionLabel, awardedMarks, maxMarks, verdict }` |
-| `job.completed` | `{ jobId, submissionId, assessmentId, totalAwarded, totalMax, durationMs }` |
-| `job.failed` | `{ jobId, submissionId, stage, error, retryable }` |
+Payload shapes live in `packages/shared/src/events.ts`.
 
 ---
 
 ## Data model
 
-Full schema: [`packages/database/prisma/schema.prisma`](packages/database/prisma/schema.prisma)
-
 ```
 School ─┬─ User ─── Assessment ─┬─ Asset ─── Submission ─┬─ SubmissionPage ─── AnswerRegion
         │                       │                        │                          │
         │                       ├─ Question ─┬─ RubricCriterion                     │
-        │                       │            └─ (self-relation: sub-questions)      │
-        │                       │                                                    │
+        │                       │            └─ sub-questions (self-relation)       │
         │                       └─ Job              Evaluation ─┬─ EvaluationStep ◄──┘
         └─ Override ◄───────────────────────────────────────────┘
 ```
 
-Two `vector(384)` columns (`Question.embedding`, `AnswerRegion.embedding`) back the
-semantic question ⇄ answer matching. The dimension is fixed by the embedding model —
-changing `EMBEDDING_MODEL` to one with a different width requires a migration.
+`Question.embedding` and `AnswerRegion.embedding` are `vector(768)` columns backing the
+semantic matching. Switching to an embedding model of a different width needs a migration.
+
+Sign-up stores first name, last name, email, password hash and a school reference. School
+names are matched case-insensitively, so two teachers at one school share a record instead
+of creating duplicates.
+
+### Authentication
+
+Email and password, or Google.
+
+The API issues a JWT and the web app stores it in an **httpOnly** cookie, so page scripts can
+never read it. The browser sends it to the API automatically — `localhost:3000` and
+`localhost:4000` are the same site, so the cookie crosses the port boundary. NestJS accepts
+the token from that cookie or from an `Authorization: Bearer` header, which is why server
+components, the browser and `curl` all pass through one guard.
+
+For Google, the web app runs the authorization-code flow and the API **re-verifies the ID
+token with Google** before trusting anything in it, including checking the token's audience
+against the client ID. The `state` parameter is cookie-bound and compared on return. A Google
+account whose verified email matches an existing password account is linked to it rather
+than duplicated.
+
+To enable it: create an OAuth client at
+[console.cloud.google.com](https://console.cloud.google.com) → Credentials → OAuth client ID →
+Web application, with redirect URI `http://localhost:3000/api/auth/google/callback`, then set
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Leave them blank and the button is hidden.
 
 ---
 
-## Design system
+## Deploying
 
-Tokens are defined CSS-first in [`apps/web/src/app/globals.css`](apps/web/src/app/globals.css)
-under `@theme`, so every token is automatically a Tailwind utility.
+The pieces are independent, so any host that runs a Node service will do.
 
-| Token | Value | Used for |
+| Piece | Suggested host | Notes |
 |---|---|---|
-| `brand-500` | `#f26522` | Headline accent, upload labels, sparkles, badges |
-| `brand-100` | `#ffede4` | Illustration rings, AI feedback panel |
-| `ink-900` | `#111214` | Headlines, primary pill, body |
-| `ink-600` | `#6b7280` | Subtitles, inactive nav |
-| `ink-200` | `#e5e7eb` | Borders |
-| `success-600` | `#16a34a` | Full-score pills, bounding boxes |
-| `danger-600` | `#dc2626` | PDF badge, errors |
+| Web | Vercel | Point `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` at the API |
+| API + workers | Railway, Render, Fly.io | Needs a persistent process; WebSockets must be allowed |
+| Postgres | Supabase, Neon | Must support the `vector` extension. Set `DIRECT_URL` to the non-pooled string |
+| Redis | Upstash | Use the `rediss://` URL |
+| Storage | Cloudflare R2 | Add a CORS rule allowing `PUT` from the web origin, or uploads are blocked |
 
-Shell metrics: sidebar `232px` expanded / `64px` rail, topbar `56px`.
-Type: Inter via `next/font`, H1 `38px/700` desktop and `22px/700` mobile.
+Before going live: generate a fresh `AUTH_SECRET`, point `CORS_ORIGINS` at the real web
+origin, add the production callback URL to the Google OAuth client, and run
+`pnpm --filter @vedaai/database migrate:deploy`.
 
-> Values were read from the exported Figma PNGs. Share the Figma file or dev-mode tokens
-> and these get replaced with exact values in one pass.
+Workers currently run inside the API process. For heavier load, run a second instance of the
+same image with the HTTP listener disabled — no code changes needed.
 
 ---
 
-## Project status
+## Troubleshooting
 
-### Done — the full pipeline runs end to end
+**API exits with `P1001: Can't reach database server`.** Docker is not running. Start Docker
+Desktop, then `pnpm infra:up`.
 
-- [x] Turborepo + pnpm workspaces, shared tsconfig presets, Prettier
-- [x] `packages/shared` — Zod contracts for REST DTOs, VLM outputs, WS events
-- [x] `packages/database` — Prisma schema (14 models, pgvector 768-dim), migration applied, seed
-- [x] `docker-compose` — Postgres(pgvector) + Redis + MinIO on dedicated ports
-- [x] Design token layer + app shell (sidebar, 64px icon rail, topbar, mobile drawer)
-- [x] **Screen 1 & 2** — upload empty/filled, drag-drop, validation, progress, remove
-- [x] **Screen 3** — extracting, collapsed rail, live WebSocket progress
-- [x] **Screen 4** — question ⇄ answer review: split pane, green bounding-box canvas
-      overlay, AI feedback panel, step deductions, manual override, finalise
-- [x] Auth — sign-in page, httpOnly cookie session, global `JwtAuthGuard`
-- [x] `StorageModule` — pre-signed PUT/GET, verified round-trip against MinIO
-- [x] `AssessmentsModule` / `SubmissionsModule` — CRUD, asset lifecycle, rubric edit,
-      override audit trail, finalise
-- [x] `QueueModule` — 6 BullMQ queues wired as a FlowProducer graph with fan-out/fan-in
-- [x] `AiEngineModule` — provider-agnostic adapter (Google / OpenRouter / OpenCode Zen /
-      OpenAI / Ollama), Gemini-safe structured output, image rasterisation and region
-      cropping, hybrid label+embedding+lexical mapping
-- [x] `EventsGateway` — typed Socket.io emitters, weighted cross-stage progress
-- [x] Terminal-failure reporting on every stage, so a dead job surfaces in the UI
-      instead of leaving the extracting screen spinning
+**`pnpm dev` fails with `EADDRINUSE`.** An earlier run was orphaned. `pnpm stop` finds the
+processes on ports 3000 and 4000, walks up to the root of the run, and kills the whole tree.
+Killing the port holder alone is not enough — it is a leaf, and its parent survives.
 
-### Verified manually
+**Ctrl+C does not stop the servers.** Known on Windows terminals. `turbo.json` uses
+`"ui": "stream"` to keep the signal working; if it still misbehaves, use `pnpm stop`.
 
-| Check | Result |
-|---|---|
-| `POST /auth/login` → JWT + session user | ✅ |
-| Unauthenticated `GET /assessments` | ✅ 401 |
-| Pre-sign → browser PUT → confirm → object in MinIO | ✅ |
-| `POST /start-mapping` → ingest → rasterise → page row → flow fan-out | ✅ |
-| Sign-in sets httpOnly cookie; API accepts it cross-port | ✅ |
-| pgvector extension + both `vector(768)` columns | ✅ |
+**Web app returns 500 with `ENOENT ... _buildManifest.js.tmp`.** The `.next` folder is
+corrupted, usually from running `pnpm build` while `pnpm dev` was live. Stop everything,
+delete `apps/web/.next`, start again.
 
-### Next
+**`prisma generate` fails with `EPERM`.** The running API holds the query engine open and
+Windows will not rename an open file. Run `pnpm stop` first. The build skips generation when
+the schema is unchanged, so this only appears after an actual schema edit.
 
-- [ ] Exam list page (`/exams` currently redirects to the most recent exam)
-- [ ] Rubric editor UI (the `PATCH /questions/:id` endpoint exists and works)
-- [ ] Google OAuth provider on the sign-in page
-- [ ] Split workers into their own process for horizontal scaling
-- [ ] Tests: Zod contract round-trips, upload flow, grading determinism
+**Grading fails but uploads work.** Check `GET /api/v1/health/ai` — usually a missing key, or
+a model that does not accept images.
 
-### Open item
+---
 
-- **`GOOGLE_AI_API_KEY` is required** before a grading job can complete. Everything
-  up to and including page rasterisation runs without it; the AI stages fail with a
-  clear message. Check status with `GET /api/v1/health/ai`.
+## Status
 
-## Commands
+Working end to end: authentication, uploads, the full six-stage pipeline, live progress, and
+the review screen with bounding boxes and manual overrides.
 
-| Command | Does |
-|---|---|
-| `pnpm dev` | Run every app in dev mode |
-| `pnpm stop` | Stop the dev servers and free ports 3000/4000 |
-| `pnpm build` | Build everything |
-| `pnpm typecheck` | Type-check every package |
-| `pnpm lint` | Lint everything |
-| `pnpm format` | Prettier write |
-| `pnpm infra:up` / `infra:down` | Start / stop Docker services |
-| `pnpm infra:reset` | Stop and **delete all local data volumes** |
-| `pnpm db:migrate` | Create + apply a migration |
-| `pnpm db:push` | Push schema without a migration (prototyping) |
-| `pnpm db:seed` | Seed demo data |
-| `pnpm db:studio` | Prisma Studio |
-
-### Health checks
-
-```bash
-curl http://localhost:4000/api/v1/health      # database connectivity
-curl http://localhost:4000/api/v1/health/ai   # confirms the AI key + model work
-```
-
-### Troubleshooting
-
-**Stopping the dev servers.**
-
-```bash
-pnpm stop
-```
-
-Prefer this over Ctrl+C. `turbo run dev` fans out into a tree — turbo at the root,
-one Node per app, one per watch task — and in Git Bash / mintty on Windows Ctrl+C
-often reaches only the foreground process, orphaning the rest. They keep holding
-ports 3000 and 4000, so the next `pnpm dev` dies with `EADDRINUSE`.
-
-`pnpm stop` finds whatever is listening on those ports, climbs **up** to the root of
-the run, and kills that whole tree. Killing the port holder alone is not enough: it
-is a leaf, so its parent and siblings survive.
-
-Ctrl+C itself is also more reliable now that `turbo.json` uses `"ui": "stream"`
-instead of the interactive TUI, which was swallowing the signal. Switch back to
-`"tui"` if you prefer the nicer output and Ctrl+C behaves in your terminal.
-
-**Stale server serving old code.** Same cause — run `pnpm stop`, then `pnpm dev`.
-
-**Web app returning 500 with `ENOENT ... _buildManifest.js.tmp`.** The `.next`
-directory is corrupted, usually from running `pnpm build` while `pnpm dev` was live.
-Stop everything, delete `apps/web/.next`, and start again.
-
-**`P1000: Authentication failed`.** Something other than the VedaAI container is
-answering on the Postgres port — usually a native PostgreSQL Windows service. Check
-with `Get-NetTCPConnection -LocalPort 5434 -State Listen`.
+Not built yet: an exam list page (`/exams` opens the most recent exam), a rubric editor UI
+(the endpoint exists), batch grading of a whole class, and automated tests.

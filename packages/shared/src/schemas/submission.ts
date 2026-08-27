@@ -13,10 +13,7 @@ export const submissionPageSchema = z.object({
 });
 export type SubmissionPage = z.infer<typeof submissionPageSchema>;
 
-/**
- * A region of handwriting on a page. When `questionId` is set, this is what the
- * review screen draws as a green bounding box tagged "Q1", "Q2", …
- */
+/** A region of handwriting on a page. */
 export const answerRegionSchema = z.object({
   id: z.string(),
   pageId: z.string(),

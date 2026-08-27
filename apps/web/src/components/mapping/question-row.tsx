@@ -27,12 +27,7 @@ export function QuestionRow({
   onOverride,
 }: QuestionRowProps) {
   return (
-    <div
-      className={cn(
-        'border-b border-ink-100 transition-colors',
-        active && 'bg-brand-50/40',
-      )}
-    >
+    <div className={cn('border-ink-100 border-b transition-colors', active && 'bg-brand-50/40')}>
       <button
         type="button"
         onClick={onToggle}
@@ -42,9 +37,7 @@ export function QuestionRow({
         <span
           className={cn(
             'mt-px flex size-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-            active
-              ? 'bg-brand-500 text-white'
-              : 'border border-ink-300 bg-white text-ink-600',
+            active ? 'bg-brand-500 text-white' : 'border-ink-300 text-ink-600 border bg-white',
           )}
         >
           {index + 1}
@@ -53,7 +46,7 @@ export function QuestionRow({
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              'block text-[12.5px] leading-snug text-ink-800',
+              'text-ink-800 block text-[12.5px] leading-snug',
               !expanded && 'line-clamp-2',
             )}
           >
@@ -68,27 +61,22 @@ export function QuestionRow({
             overridden={evaluation?.isOverridden ?? false}
           />
           <ChevronDown
-            className={cn(
-              'size-3.5 text-ink-400 transition-transform',
-              expanded && 'rotate-180',
-            )}
+            className={cn('text-ink-400 size-3.5 transition-transform', expanded && 'rotate-180')}
           />
         </span>
       </button>
 
       {expanded && evaluation && (
         <div className="px-3 pb-3 pl-[42px]">
-          <div className="rounded-lg bg-brand-50 p-2.5">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold text-brand-700">
+          <div className="bg-brand-50 rounded-lg p-2.5">
+            <p className="text-brand-700 flex items-center gap-1.5 text-[11px] font-bold">
               <Sparkles className="size-3" />
               AI Feedback
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-ink-700">
-              {evaluation.feedback}
-            </p>
+            <p className="text-ink-700 mt-1 text-[12px] leading-relaxed">{evaluation.feedback}</p>
 
             {evaluation.steps.length > 0 && (
-              <ul className="mt-2 flex flex-col gap-1 border-t border-brand-200/60 pt-2">
+              <ul className="border-brand-200/60 mt-2 flex flex-col gap-1 border-t pt-2">
                 {evaluation.steps.map((step) => (
                   <li key={step.id} className="flex items-start gap-2 text-[11.5px]">
                     <span
@@ -118,7 +106,7 @@ export function QuestionRow({
       )}
 
       {expanded && !evaluation && (
-        <p className="px-3 pb-3 pl-[42px] text-[11.5px] text-ink-400">
+        <p className="text-ink-400 px-3 pb-3 pl-[42px] text-[11.5px]">
           This question has not been graded yet.
         </p>
       )}

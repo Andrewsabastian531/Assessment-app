@@ -11,10 +11,7 @@ interface UseFileUploadOptions {
   kind: AssetKind;
 }
 
-/**
- * Drives one dropzone slot: pre-sign → direct PUT to storage → confirm.
- * The API never touches the file bytes.
- */
+/** Drives one dropzone slot: pre-sign → direct PUT to storage → confirm. */
 export function useFileUpload({ assessmentId, kind }: UseFileUploadOptions) {
   const [file, setFile] = React.useState<UploadedFile | null>(null);
 
@@ -49,11 +46,8 @@ export function useFileUpload({ assessmentId, kind }: UseFileUploadOptions) {
 
         setFile((prev) => (prev ? { ...prev, id: presigned.assetId } : prev));
 
-        await putToStorage(
-          presigned.uploadUrl,
-          selected,
-          presigned.requiredHeaders,
-          (progress) => setFile((prev) => (prev ? { ...prev, progress } : prev)),
+        await putToStorage(presigned.uploadUrl, selected, presigned.requiredHeaders, (progress) =>
+          setFile((prev) => (prev ? { ...prev, progress } : prev)),
         );
 
         await api.confirmUpload(assessmentId, { assetId: presigned.assetId });

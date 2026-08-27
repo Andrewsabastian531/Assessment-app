@@ -3,10 +3,7 @@ import { loginSchema } from '@vedaai/shared';
 import { API_URL } from '@/lib/api-client';
 import { setSessionCookie } from '@/lib/auth-cookie';
 
-/**
- * Exchanges credentials for an API JWT and stores it in an httpOnly cookie.
- * Keeping the token out of client JS means an XSS cannot exfiltrate it.
- */
+/** Exchanges credentials for an API JWT and stores it in an httpOnly cookie. */
 export async function POST(request: Request) {
   const parsed = loginSchema.safeParse(await request.json());
   if (!parsed.success) {

@@ -97,9 +97,7 @@ ${input.transcript.trim() || '[no text detected in this region]'}`);
     );
   }
 
-  sections.push(
-    `Grade this answer out of ${input.maxMarks} and return the required JSON.`,
-  );
+  sections.push(`Grade this answer out of ${input.maxMarks} and return the required JSON.`);
 
   return sections.join('\n\n');
 }

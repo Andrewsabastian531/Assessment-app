@@ -1,6 +1,6 @@
 /**
- * Google requires the redirect_uri on the token exchange to byte-match the one
- * used to start the flow, so both are derived from this single function.
+ * Google requires the redirect_uri on the token exchange to byte-match the one used to
+ * start the flow, so both are derived from this single function.
  */
 export function googleRedirectUri(request: Request): string {
   const configured = process.env.GOOGLE_REDIRECT_URI;

@@ -23,10 +23,7 @@ export interface PresignedUpload {
   requiredHeaders: Record<string, string>;
 }
 
-/**
- * S3-compatible object storage. Works unchanged against Cloudflare R2 and the
- * local MinIO container — only the endpoint and path-style flag differ.
- */
+/** S3-compatible object storage. */
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
@@ -49,8 +46,8 @@ export class StorageService {
   }
 
   /**
-   * Keys are namespaced by assessment so a whole exam can be lifecycle-expired
-   * or deleted with a single prefix operation.
+   * Keys are namespaced by assessment so a whole exam can be lifecycle-expired or
+   * deleted with a single prefix operation.
    */
   buildKey(assessmentId: string, kind: AssetKind, mimeType: AcceptedMimeType): string {
     const extension = MIME_EXTENSION[mimeType] ?? 'bin';
@@ -119,9 +116,7 @@ export class StorageService {
 
   async delete(storageKey: string): Promise<void> {
     try {
-      await this.client.send(
-        new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }),
-      );
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }));
     } catch (error) {
       // A missing object is not worth failing the request over — the caller has
       // already removed the database row.

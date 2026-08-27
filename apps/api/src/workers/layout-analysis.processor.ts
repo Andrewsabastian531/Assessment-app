@@ -8,10 +8,7 @@ import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
 import { QUEUES, type PageJobData } from '@/modules/queue/queue.constants';
 
-/**
- * Stage 3. One job per answer-sheet page: segment it into regions, decide
- * printed-vs-handwritten, and transcribe. Runs fanned out across pages.
- */
+/** Stage 3. */
 @Processor(QUEUES.LAYOUT_ANALYSIS)
 export class LayoutAnalysisProcessor extends WorkerHost {
   private readonly logger = new Logger(LayoutAnalysisProcessor.name);
@@ -59,9 +56,7 @@ export class LayoutAnalysisProcessor extends WorkerHost {
       })),
     });
 
-    this.logger.log(
-      `Page ${pageIndex + 1}/${totalPages}: ${result.regions.length} regions`,
-    );
+    this.logger.log(`Page ${pageIndex + 1}/${totalPages}: ${result.regions.length} regions`);
 
     this.events.progress(
       jobId,

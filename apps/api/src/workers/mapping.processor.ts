@@ -13,13 +13,7 @@ import {
   type PipelineJobData,
 } from '@/modules/queue/queue.constants';
 
-/**
- * Stage 4. Runs once every page has been analysed and the rubric extracted
- * (BullMQ holds it until all children of this flow node succeed).
- *
- * Pairs each answer region with the question it answers, then fans out one
- * grading job per question.
- */
+/** Stage 4. */
 @Processor(QUEUES.MAPPING)
 export class MappingProcessor extends WorkerHost {
   private readonly logger = new Logger(MappingProcessor.name);
@@ -79,9 +73,9 @@ export class MappingProcessor extends WorkerHost {
       if (match.questionId) matched += 1;
     }
 
-    const unmatched = questions.length - new Set(
-      matches.filter((match) => match.questionId).map((match) => match.questionId),
-    ).size;
+    const unmatched =
+      questions.length -
+      new Set(matches.filter((match) => match.questionId).map((match) => match.questionId)).size;
 
     await this.prisma.assessment.update({
       where: { id: assessmentId },
@@ -97,14 +91,17 @@ export class MappingProcessor extends WorkerHost {
       `Matched ${matched} answer${matched === 1 ? '' : 's'}`,
     );
 
-    await this.fanOut(job.data, questions.map((question) => question.id));
+    await this.fanOut(
+      job.data,
+      questions.map((question) => question.id),
+    );
 
     return { matched };
   }
 
   /**
-   * One grading job per question, with aggregation as their parent so it runs
-   * only after every question has a verdict.
+   * One grading job per question, with aggregation as their parent so it runs only
+   * after every question has a verdict.
    */
   private async fanOut(data: PipelineJobData, questionIds: string[]) {
     await this.flow.add({

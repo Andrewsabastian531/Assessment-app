@@ -1,15 +1,14 @@
 import { cn } from '@/lib/utils';
 
 /**
- * The VedaAI mark: a near-black rounded square holding a white glyph that reads
- * as a stylised "V" / open book. Drawn as inline SVG so it stays crisp at the
- * 28px sidebar size and the 24px collapsed-rail size without shipping a raster.
+ * The VedaAI mark: a near-black rounded square holding a white glyph that reads as a
+ * stylised "V" / open book.
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex size-7 shrink-0 items-center justify-center rounded-[7px] bg-ink-900',
+        'bg-ink-900 inline-flex size-7 shrink-0 items-center justify-center rounded-[7px]',
         className,
       )}
     >
@@ -34,7 +33,7 @@ export function Logo({ collapsed = false }: { collapsed?: boolean }) {
     <span className="flex items-center gap-2">
       <LogoMark />
       {!collapsed && (
-        <span className="text-[15px] font-bold tracking-tight text-ink-900">VedaAI</span>
+        <span className="text-ink-900 text-[15px] font-bold tracking-tight">VedaAI</span>
       )}
     </span>
   );

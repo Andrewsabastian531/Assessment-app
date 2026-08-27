@@ -1,29 +1,16 @@
 import { cn } from '@/lib/utils';
 
-/**
- * The teacher illustration from the upload screen: a circular portrait sitting
- * inside two peach rings, with four small brand dots pinned at the cardinal
- * points of the outer ring.
- *
- * Drawn entirely in SVG/CSS so the screen renders with no image assets. Drop a
- * real portrait in as `src` and it takes over the inner circle.
- */
-export function UploadIllustration({
-  src,
-  className,
-}: {
-  src?: string;
-  className?: string;
-}) {
+/** Circular portrait inside two peach rings, with four dots on the outer ring. */
+export function UploadIllustration({ src, className }: { src?: string; className?: string }) {
   return (
     <div className={cn('relative size-[74px] shrink-0 sm:size-[86px]', className)}>
       {/* outer ring */}
-      <div className="absolute inset-0 rounded-full bg-brand-100/70" />
+      <div className="bg-brand-100/70 absolute inset-0 rounded-full" />
       {/* inner ring */}
-      <div className="absolute inset-[7px] rounded-full bg-brand-200/60" />
+      <div className="bg-brand-200/60 absolute inset-[7px] rounded-full" />
 
       {/* portrait */}
-      <div className="absolute inset-[13px] overflow-hidden rounded-full bg-brand-50">
+      <div className="bg-brand-50 absolute inset-[13px] overflow-hidden rounded-full">
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="" className="size-full object-cover" />
@@ -42,7 +29,7 @@ export function UploadIllustration({
         <span
           key={position}
           aria-hidden="true"
-          className={cn('absolute size-[7px] rounded-full bg-brand-500', position)}
+          className={cn('bg-brand-500 absolute size-[7px] rounded-full', position)}
         />
       ))}
     </div>
@@ -60,10 +47,7 @@ function TeacherGlyph() {
         className="fill-ink-800"
       />
       {/* body */}
-      <path
-        d="M14 58c0-9.4 8-15 18-15s18 5.6 18 15H14Z"
-        className="fill-brand-500"
-      />
+      <path d="M14 58c0-9.4 8-15 18-15s18 5.6 18 15H14Z" className="fill-brand-500" />
       {/* collar */}
       <path d="M28 43.5 32 49l4-5.5-4-1.5-4 1.5Z" className="fill-white" />
       {/* held book */}

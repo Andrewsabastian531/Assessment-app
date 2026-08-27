@@ -12,13 +12,7 @@ interface BoundingBoxLayerProps {
   onSelect: (questionId: string) => void;
 }
 
-/**
- * Draws the green answer boxes over the page image.
- *
- * Boxes are positioned in percentages because the stored coordinates are
- * normalised 0..1 — so they stay correct at any zoom level, on any device pixel
- * ratio, without recomputing on resize.
- */
+/** Draws the green answer boxes over the page image. */
 export function BoundingBoxLayer({
   regions,
   labelFor,
@@ -40,7 +34,7 @@ export function BoundingBoxLayer({
             className={cn(
               'pointer-events-auto absolute rounded-[3px] border-2 transition-all',
               active
-                ? 'z-10 border-success-600 bg-success-500/25 shadow-[0_0_0_3px_rgba(22,163,74,0.15)]'
+                ? 'border-success-600 bg-success-500/25 z-10 shadow-[0_0_0_3px_rgba(22,163,74,0.15)]'
                 : 'border-success-600/70 bg-success-500/10 hover:bg-success-500/20',
             )}
             style={{

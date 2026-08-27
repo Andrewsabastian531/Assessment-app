@@ -26,32 +26,22 @@ const STAGE_ORDER: PipelineStage[] = [
 
 const TOTAL_WEIGHT = STAGE_ORDER.reduce((sum, stage) => sum + STAGE_WEIGHTS[stage], 0);
 
-/**
- * The only place events are emitted. Workers call these rather than touching the
- * gateway, so every payload is typed against the shared contract.
- */
+/** The only place events are emitted. */
 @Injectable()
 export class EventsPublisher {
   constructor(private readonly gateway: EventsGateway) {}
 
   /**
-   * Converts stage-local progress into an overall percentage using the stage
-   * weights, so the bar advances smoothly instead of resetting each stage.
+   * Converts stage-local progress into an overall percentage using the stage weights,
+   * so the bar advances smoothly instead of resetting each stage.
    */
-  progress(
-    jobId: string,
-    stage: PipelineStage,
-    current: number,
-    total: number,
-    message: string,
-  ) {
+  progress(jobId: string, stage: PipelineStage, current: number, total: number, message: string) {
     const completedWeight = STAGE_ORDER.slice(0, STAGE_ORDER.indexOf(stage)).reduce(
       (sum, previous) => sum + STAGE_WEIGHTS[previous],
       0,
     );
     const stageFraction = total > 0 ? Math.min(1, current / total) : 0;
-    const percent =
-      ((completedWeight + STAGE_WEIGHTS[stage] * stageFraction) / TOTAL_WEIGHT) * 100;
+    const percent = ((completedWeight + STAGE_WEIGHTS[stage] * stageFraction) / TOTAL_WEIGHT) * 100;
 
     this.emit(jobRoom(jobId), SERVER_EVENTS.JOB_PROGRESS, {
       jobId,
@@ -80,11 +70,7 @@ export class EventsPublisher {
   }
 
   questionGraded(payload: EvaluationQuestionCompletedPayload) {
-    this.emit(
-      jobRoom(payload.jobId),
-      SERVER_EVENTS.EVALUATION_QUESTION_COMPLETED,
-      payload,
-    );
+    this.emit(jobRoom(payload.jobId), SERVER_EVENTS.EVALUATION_QUESTION_COMPLETED, payload);
     this.emit(
       submissionRoom(payload.submissionId),
       SERVER_EVENTS.EVALUATION_QUESTION_COMPLETED,

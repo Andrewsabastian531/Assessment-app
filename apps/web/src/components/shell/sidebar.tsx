@@ -19,11 +19,7 @@ interface SidebarProps {
   school: SidebarSchool | null;
 }
 
-/**
- * The persistent left rail. Two visual states, both present in the designs:
- *  - expanded (232px) on the upload screens
- *  - icon-only (64px) on the "Extracting…" screen
- */
+/** The persistent left rail. */
 export function Sidebar({ collapsed, school }: SidebarProps) {
   const pathname = usePathname();
 
@@ -31,42 +27,34 @@ export function Sidebar({ collapsed, school }: SidebarProps) {
     <aside
       data-collapsed={collapsed}
       className={cn(
-        'hidden shrink-0 flex-col border-r border-ink-200 bg-white transition-[width] duration-200 ease-out lg:flex',
+        'border-ink-200 hidden shrink-0 flex-col border-r bg-white transition-[width] duration-200 ease-out lg:flex',
         collapsed ? 'w-rail' : 'w-sidebar',
       )}
     >
-      {/* ---------------- brand row ---------------- */}
-      <div
-        className={cn(
-          'flex h-topbar items-center',
-          collapsed ? 'justify-center px-2' : 'px-4',
-        )}
-      >
+      <div className={cn('h-topbar flex items-center', collapsed ? 'justify-center px-2' : 'px-4')}>
         {collapsed ? <LogoMark /> : <Logo />}
       </div>
 
-      {/* ---------------- primary CTA ---------------- */}
       <div className={cn('pb-2', collapsed ? 'px-2' : 'px-3')}>
         {collapsed ? (
           <button
             type="button"
             aria-label="AI Teachers Toolkit"
-            className="flex size-10 items-center justify-center rounded-full border-2 border-brand-200 bg-ink-900 text-white transition-transform hover:scale-105"
+            className="border-brand-200 bg-ink-900 flex size-10 items-center justify-center rounded-full border-2 text-white transition-transform hover:scale-105"
           >
-            <Sparkles className="size-4 text-brand-400" />
+            <Sparkles className="text-brand-400 size-4" />
           </button>
         ) : (
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[13px] font-semibold text-white ring-2 ring-brand-500/70 transition-colors hover:bg-ink-800"
+            className="bg-ink-900 ring-brand-500/70 hover:bg-ink-800 flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold text-white ring-2 transition-colors"
           >
-            <Sparkles className="size-4 text-brand-400" />
+            <Sparkles className="text-brand-400 size-4" />
             AI Teacher&apos;s Toolkit
           </button>
         )}
       </div>
 
-      {/* ---------------- navigation ---------------- */}
       <nav className={cn('flex flex-1 flex-col gap-0.5 pt-2', collapsed ? 'px-2' : 'px-3')}>
         {PRIMARY_NAV.map((item) => {
           const active = isNavItemActive(item, pathname);
@@ -78,7 +66,7 @@ export function Sidebar({ collapsed, school }: SidebarProps) {
               aria-current={active ? 'page' : undefined}
               title={collapsed ? item.label : undefined}
               className={cn(
-                'flex items-center rounded-nav text-[13.5px] font-medium transition-colors',
+                'rounded-nav flex items-center text-[13.5px] font-medium transition-colors',
                 collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
                 active
                   ? 'bg-ink-100 text-ink-900'
@@ -92,14 +80,13 @@ export function Sidebar({ collapsed, school }: SidebarProps) {
         })}
       </nav>
 
-      {/* ---------------- footer ---------------- */}
       <div className={cn('flex flex-col gap-3 pb-4', collapsed ? 'px-2' : 'px-3')}>
         {!collapsed && (
           <Link
             href="/settings"
-            className="flex items-center gap-3 rounded-nav px-3 py-2 text-[13.5px] font-medium text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-900"
+            className="rounded-nav text-ink-600 hover:bg-ink-50 hover:text-ink-900 flex items-center gap-3 px-3 py-2 text-[13.5px] font-medium transition-colors"
           >
-            <Settings className="size-[17px] text-ink-500" />
+            <Settings className="text-ink-500 size-[17px]" />
             Settings
           </Link>
         )}

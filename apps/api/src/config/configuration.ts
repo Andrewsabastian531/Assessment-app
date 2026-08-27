@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Every environment variable the API reads, validated once at boot. A missing or
- * malformed value fails startup with a readable message rather than surfacing as
- * an undefined halfway through a grading job.
- */
+/** Every environment variable the API reads, validated once at boot. */
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(4000),
@@ -16,7 +12,10 @@ const envSchema = z.object({
 
   AUTH_SECRET: z
     .string()
-    .min(16, 'AUTH_SECRET must be at least 16 characters — generate one with `openssl rand -base64 32`'),
+    .min(
+      16,
+      'AUTH_SECRET must be at least 16 characters — generate one with `openssl rand -base64 32`',
+    ),
   JWT_EXPIRES_IN: z.string().default('7d'),
 
   S3_ENDPOINT: z.string().url(),

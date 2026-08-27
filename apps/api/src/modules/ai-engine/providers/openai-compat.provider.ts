@@ -9,13 +9,8 @@ interface ChatResponse {
 }
 
 /**
- * Any OpenAI-compatible `/chat/completions` gateway: OpenRouter, OpenCode Zen,
- * OpenAI itself, or a local Ollama in OpenAI mode.
- *
- * Note: these gateways vary in what they actually support. A model that cannot
- * accept image parts will fail the layout-analysis stage, and one that ignores
- * `response_format` will fail schema validation — both surface as a clear error
- * rather than silently degraded grading.
+ * Any OpenAI-compatible `/chat/completions` gateway: OpenRouter, OpenCode Zen, OpenAI
+ * itself, or a local Ollama in OpenAI mode.
  */
 export class OpenAiCompatProvider implements VlmProvider {
   private readonly logger = new Logger(OpenAiCompatProvider.name);
@@ -32,9 +27,7 @@ export class OpenAiCompatProvider implements VlmProvider {
   async complete<T>(request: VlmRequest<T>): Promise<VlmResponse<T>> {
     const startedAt = Date.now();
 
-    const content: Array<Record<string, unknown>> = [
-      { type: 'text', text: request.prompt },
-    ];
+    const content: Array<Record<string, unknown>> = [{ type: 'text', text: request.prompt }];
     for (const image of request.images) {
       content.push({
         type: 'image_url',
@@ -151,7 +144,10 @@ export class OpenAiCompatProvider implements VlmProvider {
 function stripCodeFence(text: string): string {
   const trimmed = text.trim();
   if (!trimmed.startsWith('```')) return trimmed;
-  return trimmed.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+  return trimmed
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```$/, '')
+    .trim();
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

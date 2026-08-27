@@ -26,11 +26,7 @@ const questionBaseSchema = z.object({
   criteria: z.array(rubricCriterionSchema),
 });
 
-/**
- * Sub-questions ("2a", "2b") nest under their parent, so the type is recursive.
- * TypeScript cannot infer a self-referential z.lazy(), hence the explicit
- * interface and the ZodType annotation below.
- */
+/** Sub-questions ("2a", "2b") nest under their parent, so the type is recursive. */
 export interface Question extends z.infer<typeof questionBaseSchema> {
   children?: Question[];
 }
@@ -39,7 +35,7 @@ export const questionSchema: z.ZodType<Question> = questionBaseSchema.extend({
   children: z.lazy(() => z.array(questionSchema)).optional(),
 });
 
-/** Teacher edits to the auto-extracted rubric. Every field is optional (PATCH). */
+/** Teacher edits to the auto-extracted rubric. */
 export const updateQuestionSchema = z.object({
   label: z.string().min(1).optional(),
   text: z.string().min(1).optional(),

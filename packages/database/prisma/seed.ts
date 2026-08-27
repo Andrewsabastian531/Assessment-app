@@ -4,8 +4,8 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 /**
- * Seeds the account and school shown in the Figma designs so the app has
- * something real to render on first run.
+ * Seeds the account and school shown in the Figma designs so the app has something real
+ * to render on first run.
  */
 async function main() {
   const school = await prisma.school.upsert({

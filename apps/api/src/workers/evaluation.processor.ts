@@ -13,10 +13,7 @@ import { QUEUES, type EvaluationJobData } from '@/modules/queue/queue.constants'
 /** How many cropped regions to send per question — enough context, bounded cost. */
 const MAX_REGION_IMAGES = 3;
 
-/**
- * Stage 5. Grades one question against the rubric. One job per question, so a
- * single failure retries in isolation instead of restarting the whole paper.
- */
+/** Stage 5. */
 @Processor(QUEUES.EVALUATION)
 export class EvaluationProcessor extends WorkerHost {
   private readonly logger = new Logger(EvaluationProcessor.name);
@@ -121,9 +118,7 @@ export class EvaluationProcessor extends WorkerHost {
     return { awardedMarks: result.awardedMarks };
   }
 
-  private async cropRegions(
-    regions: Array<{ bbox: unknown; page: { imageKey: string } }>,
-  ) {
+  private async cropRegions(regions: Array<{ bbox: unknown; page: { imageKey: string } }>) {
     const crops: Array<{ data: Buffer; mimeType: string }> = [];
 
     for (const region of regions.slice(0, MAX_REGION_IMAGES)) {

@@ -1,18 +1,5 @@
 #!/usr/bin/env node
-/**
- * Runs `prisma generate`, but only when the schema has actually changed.
- *
- * Two reasons this exists:
- *
- * 1. `dev` depends on `^build`, so every `pnpm dev` regenerated the client even
- *    when nothing had changed — pure wasted time.
- * 2. On Windows, generating while an API process is running fails with a bare
- *    `EPERM: operation not permitted, rename ...query_engine-windows.dll.node`,
- *    because the running process holds that file open and Windows will not
- *    rename an open file. Skipping the no-op case avoids the failure entirely,
- *    and when a regenerate is genuinely required we explain what to do instead
- *    of surfacing the raw EPERM.
- */
+/** Runs `prisma generate`, but only when the schema has actually changed. */
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -34,9 +21,8 @@ if (!force && previousHash === schemaHash) {
   process.exit(0);
 }
 
-// Invoke Prisma's JS entrypoint with the current Node binary rather than the
-// `prisma` shim. No shell means no quoting problems on a path containing a
-// space, and none of Node's shell-injection deprecation warnings.
+// Invoke Prisma's JS entrypoint with the current Node binary rather than the `prisma`
+// shim.
 const require = createRequire(import.meta.url);
 const prismaEntry = require.resolve('prisma/build/index.js');
 

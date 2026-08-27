@@ -2,10 +2,6 @@ import { z } from 'zod';
 import { EvaluationVerdict, QuestionType } from '../enums';
 import { boundingBoxSchema } from './common';
 
-/* ------------------------------------------------------------------ *
- * Stage 1 — Question extraction (question paper → editable rubric)
- * ------------------------------------------------------------------ */
-
 export const extractedQuestionSchema = z.object({
   label: z.string().describe('Printed question number exactly as shown, e.g. "2" or "2a"'),
   text: z.string().describe('Full question text, verbatim'),
@@ -41,10 +37,6 @@ export const questionExtractionResultSchema = z.object({
 });
 export type QuestionExtractionResult = z.infer<typeof questionExtractionResultSchema>;
 
-/* ------------------------------------------------------------------ *
- * Stage 2 — Layout analysis (answer page → regions + transcription)
- * ------------------------------------------------------------------ */
-
 export const detectedRegionSchema = z.object({
   bbox: boundingBoxSchema,
   transcript: z.string().describe('Handwritten content transcribed as faithfully as possible'),
@@ -66,10 +58,6 @@ export const layoutAnalysisResultSchema = z.object({
 });
 export type LayoutAnalysisResult = z.infer<typeof layoutAnalysisResultSchema>;
 
-/* ------------------------------------------------------------------ *
- * Stage 3 — Grading (regions + rubric → marks + feedback)
- * ------------------------------------------------------------------ */
-
 export const gradingStepSchema = z.object({
   description: z.string().describe('What the student did on this step, and whether it was correct'),
   marksDelta: z.number().describe('Marks credited (positive) or deducted (negative) for this step'),
@@ -79,19 +67,20 @@ export type GradingStep = z.infer<typeof gradingStepSchema>;
 export const gradingResultSchema = z.object({
   awardedMarks: z.number().nonnegative(),
   verdict: z.nativeEnum(EvaluationVerdict),
-  feedback: z
-    .string()
-    .describe('Line-by-line feedback addressed to the teacher, 2-4 sentences'),
+  feedback: z.string().describe('Line-by-line feedback addressed to the teacher, 2-4 sentences'),
   steps: z.array(gradingStepSchema).describe('Step-by-step breakdown; empty for simple MCQ'),
   confidence: z.number().min(0).max(1),
 });
 export type GradingResult = z.infer<typeof gradingResultSchema>;
 
-/* ------------------------------------------------------------------ *
- * Provider abstraction — lets us swap free/paid VLMs without code changes
- * ------------------------------------------------------------------ */
-
-export const AI_PROVIDERS = ['google', 'openrouter', 'opencode-zen', 'anthropic', 'openai', 'ollama'] as const;
+export const AI_PROVIDERS = [
+  'google',
+  'openrouter',
+  'opencode-zen',
+  'anthropic',
+  'openai',
+  'ollama',
+] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 export const EMBEDDING_PROVIDERS = ['google', 'local', 'voyage', 'openai'] as const;

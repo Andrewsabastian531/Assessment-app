@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
@@ -85,12 +80,7 @@ export class AuthService {
     return this.issueToken(user);
   }
 
-  /**
-   * Completes a social sign-in. The web app runs the authorization-code flow and
-   * posts the resulting ID token here; this method verifies it with the provider
-   * before trusting a single field in it — an unverified ID token is just a
-   * base64 string anyone can forge.
-   */
+  /** Completes a social sign-in. */
   async exchangeOAuth(input: OAuthExchangeInput): Promise<AuthResponse> {
     const profile = await this.verifyGoogleIdToken(input.idToken);
 
@@ -145,7 +135,7 @@ export class AuthService {
   isGoogleConfigured(): boolean {
     return Boolean(
       this.config.get<string>('GOOGLE_CLIENT_ID', '') &&
-        this.config.get<string>('GOOGLE_CLIENT_SECRET', ''),
+      this.config.get<string>('GOOGLE_CLIENT_SECRET', ''),
     );
   }
 
@@ -158,11 +148,7 @@ export class AuthService {
     return this.toSessionUser(user);
   }
 
-  /**
-   * Schools are matched case-insensitively by name so two teachers typing
-   * "Delhi Public School" and "delhi public school" land in the same school
-   * rather than creating a duplicate.
-   */
+  /** Matches on name case-insensitively so one school does not end up duplicated. */
   private async findOrCreateSchool(name: string) {
     const trimmed = name.trim();
     const existing = await this.prisma.school.findFirst({

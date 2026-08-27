@@ -27,9 +27,7 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
   // Only leaf questions are answerable; a parent with sub-parts is a heading.
   const questions = React.useMemo(() => {
     if (!data) return [];
-    const parentIds = new Set(
-      data.questions.map((question) => question.parentId).filter(Boolean),
-    );
+    const parentIds = new Set(data.questions.map((question) => question.parentId).filter(Boolean));
     return data.questions.filter((question) => !parentIds.has(question.id));
   }, [data]);
 
@@ -62,14 +60,14 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-brand-500" />
+        <Loader2 className="text-brand-500 size-5 animate-spin" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex h-full items-center justify-center px-6 text-center text-[13px] text-danger-600">
+      <div className="text-danger-600 flex h-full items-center justify-center px-6 text-center text-[13px]">
         {error instanceof Error ? error.message : 'Could not load this submission'}
       </div>
     );
@@ -80,7 +78,7 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
   return (
     <div className="flex h-full flex-col">
       {/* mobile tab switcher — the split pane collapses on small screens */}
-      <div className="flex shrink-0 gap-1 border-b border-ink-200 bg-white p-1.5 lg:hidden">
+      <div className="border-ink-200 flex shrink-0 gap-1 border-b bg-white p-1.5 lg:hidden">
         {(['questions', 'sheet'] as const).map((tab) => (
           <button
             key={tab}
@@ -97,24 +95,23 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {/* ---------------- left: extracted questions ---------------- */}
         <section
           className={cn(
-            'flex min-h-0 w-full flex-col border-r border-ink-200 bg-white lg:flex lg:w-[42%] lg:max-w-[520px]',
+            'border-ink-200 flex min-h-0 w-full flex-col border-r bg-white lg:flex lg:w-[42%] lg:max-w-[520px]',
             mobileTab === 'questions' ? 'flex' : 'hidden',
           )}
         >
-          <header className="flex h-11 shrink-0 items-center justify-between border-b border-ink-200 px-3">
-            <h2 className="text-[12.5px] font-semibold text-ink-900">
+          <header className="border-ink-200 flex h-11 shrink-0 items-center justify-between border-b px-3">
+            <h2 className="text-ink-900 text-[12.5px] font-semibold">
               Extracted Questions{' '}
-              <span className="font-normal text-ink-500">(from question paper)</span>
+              <span className="text-ink-500 font-normal">(from question paper)</span>
             </h2>
             <button
               type="button"
               onClick={() =>
                 setExpandedId((current) => (current ? null : (questions[0]?.id ?? null)))
               }
-              className="text-[11.5px] font-medium text-brand-500 hover:underline"
+              className="text-brand-500 text-[11.5px] font-medium hover:underline"
             >
               {expandedId ? 'Collapse' : 'Expand all'}
             </button>
@@ -122,7 +119,7 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
 
           <div className="scrollbar-slim min-h-0 flex-1 overflow-auto">
             {questions.length === 0 ? (
-              <p className="p-4 text-[12.5px] text-ink-500">
+              <p className="text-ink-500 p-4 text-[12.5px]">
                 No questions were extracted from the question paper.
               </p>
             ) : (
@@ -135,9 +132,7 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
                   expanded={expandedId === question.id}
                   active={expandedId === question.id}
                   onToggle={() =>
-                    setExpandedId((current) =>
-                      current === question.id ? null : question.id,
-                    )
+                    setExpandedId((current) => (current === question.id ? null : question.id))
                   }
                   onOverride={handleOverride}
                 />
@@ -145,10 +140,10 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
             )}
           </div>
 
-          <footer className="flex shrink-0 items-center justify-between border-t border-ink-200 px-3 py-2.5">
-            <span className="text-[12px] text-ink-600">
+          <footer className="border-ink-200 flex shrink-0 items-center justify-between border-t px-3 py-2.5">
+            <span className="text-ink-600 text-[12px]">
               Total{' '}
-              <strong className="tabular-nums text-ink-900">
+              <strong className="text-ink-900 tabular-nums">
                 {totals.awarded}/{totals.max}
               </strong>
             </span>
@@ -160,7 +155,7 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
                 toast.success('Result finalised');
               }}
               disabled={data.submission.status === 'FINALIZED'}
-              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:bg-ink-200 disabled:text-ink-400"
+              className="bg-ink-900 hover:bg-ink-800 disabled:bg-ink-200 disabled:text-ink-400 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold text-white transition-colors"
             >
               <CheckCircle2 className="size-3.5" />
               {data.submission.status === 'FINALIZED' ? 'Finalised' : 'Finalise'}
@@ -168,7 +163,6 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
           </footer>
         </section>
 
-        {/* ---------------- right: answer sheet ---------------- */}
         <section
           className={cn(
             'min-h-0 w-full flex-1 bg-white lg:block',
@@ -192,10 +186,7 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
 }
 
 function summarise(data: ReviewPayload) {
-  const awarded = data.evaluations.reduce(
-    (sum, evaluation) => sum + evaluation.awardedMarks,
-    0,
-  );
+  const awarded = data.evaluations.reduce((sum, evaluation) => sum + evaluation.awardedMarks, 0);
   const max = data.evaluations.reduce((sum, evaluation) => sum + evaluation.maxMarks, 0);
   return { awarded: round2(awarded), max: round2(max) };
 }

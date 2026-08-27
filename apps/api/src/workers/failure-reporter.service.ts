@@ -5,14 +5,7 @@ import { PrismaService } from '@/modules/prisma/prisma.service';
 import { EventsPublisher } from '@/modules/events/events.publisher';
 import type { PipelineJobData } from '@/modules/queue/queue.constants';
 
-/**
- * Shared terminal-failure handling for every pipeline stage.
- *
- * Without this, a stage that exhausts its retries leaves its flow parent
- * permanently unfulfilled: BullMQ never runs the parent, no event is emitted,
- * and the "Extracting…" screen spins forever. Each processor forwards its
- * `failed` worker event here so exactly one job.failed reaches the client.
- */
+/** Shared terminal-failure handling for every pipeline stage. */
 @Injectable()
 export class FailureReporter {
   private readonly logger = new Logger(FailureReporter.name);

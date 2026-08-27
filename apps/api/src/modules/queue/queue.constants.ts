@@ -1,11 +1,6 @@
 import type { PipelineStage } from '@vedaai/shared';
 
-/**
- * Name of the BullMQ FlowProducer used to fan the pipeline out and back in.
- * Declared here rather than in queue.module.ts: the processors need it at
- * decorator-evaluation time, and importing it from the module would create a
- * cycle that leaves the value undefined.
- */
+/** Name of the BullMQ FlowProducer used to fan the pipeline out and back in. */
 export const PIPELINE_FLOW = 'pipeline';
 
 export const QUEUES = {
@@ -49,11 +44,7 @@ export const STAGE_BY_QUEUE: Record<QueueName, PipelineStage> = {
   [QUEUES.AGGREGATION]: 'AGGREGATION',
 };
 
-/**
- * Retry policy. Three attempts with exponential backoff covers the common
- * failure — a rate-limited AI call — without hammering a genuinely broken
- * upstream.
- */
+/** Retry policy. */
 export const DEFAULT_JOB_OPTIONS = {
   attempts: 3,
   backoff: { type: 'exponential' as const, delay: 4000 },

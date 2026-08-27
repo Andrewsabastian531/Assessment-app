@@ -12,8 +12,8 @@ export interface RasterPage {
 }
 
 /**
- * Turns whatever the teacher uploaded — PDF, JPG, PNG, HEIC — into a uniform
- * list of PNG page images that the vision model and the review canvas both use.
+ * Turns whatever the teacher uploaded — PDF, JPG, PNG, HEIC — into a uniform list of
+ * PNG page images that the vision model and the review canvas both use.
  */
 @Injectable()
 export class ImageService {
@@ -39,9 +39,7 @@ export class ImageService {
 
     const pages = rendered.slice(0, MAX_PAGES_PER_SUBMISSION);
     if (rendered.length > pages.length) {
-      this.logger.warn(
-        `PDF has ${rendered.length} pages; processing the first ${pages.length}`,
-      );
+      this.logger.warn(`PDF has ${rendered.length} pages; processing the first ${pages.length}`);
     }
 
     return Promise.all(
@@ -73,13 +71,8 @@ export class ImageService {
     return { pageIndex: 0, ...normalized };
   }
 
-  /**
-   * Downscales oversized scans and flattens to PNG. Phone photos are routinely
-   * 4000px wide, which wastes vision tokens without improving legibility.
-   */
-  private async normalize(
-    input: Buffer,
-  ): Promise<{ png: Buffer; width: number; height: number }> {
+  /** Downscales oversized scans and flattens to PNG. */
+  private async normalize(input: Buffer): Promise<{ png: Buffer; width: number; height: number }> {
     const pipeline = sharp(input, { failOn: 'none' })
       .rotate() // honour EXIF orientation from phone cameras
       .resize({ width: 2000, height: 2600, fit: 'inside', withoutEnlargement: true })
@@ -90,14 +83,10 @@ export class ImageService {
   }
 
   /**
-   * Crops one answer region out of a page so the grader sees the handwriting at
-   * full resolution instead of a downscaled whole page.
+   * Crops one answer region out of a page so the grader sees the handwriting at full
+   * resolution instead of a downscaled whole page.
    */
-  async cropRegion(
-    page: Buffer,
-    bbox: BoundingBox,
-    padding = 0.015,
-  ): Promise<Buffer | null> {
+  async cropRegion(page: Buffer, bbox: BoundingBox, padding = 0.015): Promise<Buffer | null> {
     try {
       const metadata = await sharp(page).metadata();
       const pageWidth = metadata.width ?? 0;

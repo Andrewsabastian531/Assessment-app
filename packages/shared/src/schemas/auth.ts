@@ -41,7 +41,7 @@ export const authResponseSchema = z.object({
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 
-/** Claims embedded in the JWT that Auth.js issues and NestJS verifies. */
+/** Claims embedded in the JWT the API issues and verifies. */
 export const jwtClaimsSchema = z.object({
   sub: z.string(),
   email: z.string().email(),
@@ -56,10 +56,7 @@ export type JwtClaims = z.infer<typeof jwtClaimsSchema>;
 export const OAUTH_PROVIDERS = ['google'] as const;
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
-/**
- * Sent by the web app after it completes the Google authorization-code flow.
- * The API verifies the ID token with Google before trusting anything in it.
- */
+/** Sent by the web app after it completes the Google authorization-code flow. */
 export const oauthExchangeSchema = z.object({
   provider: z.enum(OAUTH_PROVIDERS),
   idToken: z.string().min(1),

@@ -7,11 +7,7 @@ export const presignRequestSchema = z.object({
   mimeType: z.enum(ACCEPTED_MIME_TYPES, {
     errorMap: () => ({ message: 'Upload a PDF, PNG, JPG or HEIC file' }),
   }),
-  sizeBytes: z
-    .number()
-    .int()
-    .positive()
-    .max(MAX_UPLOAD_BYTES, 'File must be 10MB or smaller'),
+  sizeBytes: z.number().int().positive().max(MAX_UPLOAD_BYTES, 'File must be 10MB or smaller'),
   kind: z.nativeEnum(AssetKind),
 });
 export type PresignRequest = z.infer<typeof presignRequestSchema>;

@@ -22,25 +22,14 @@ export interface RegionMatch {
   strategy: 'label' | 'embedding' | 'lexical' | 'unmatched';
 }
 
-/**
- * Pairs student answer regions with the questions they answer.
- *
- * Three signals, in descending order of trust:
- *   1. A printed or handwritten label ("Q2", "3.") — near-decisive when legible.
- *   2. Cosine similarity between embeddings of the question and the answer.
- *   3. Lexical token overlap, used when the embedding provider is unavailable so
- *      a missing API key degrades quality rather than breaking the pipeline.
- */
+/** Pairs student answer regions with the questions they answer. */
 @Injectable()
 export class MappingService {
   private readonly logger = new Logger(MappingService.name);
 
   constructor(private readonly ai: AiEngineService) {}
 
-  async match(
-    questions: MappableQuestion[],
-    regions: MappableRegion[],
-  ): Promise<RegionMatch[]> {
+  async match(questions: MappableQuestion[], regions: MappableRegion[]): Promise<RegionMatch[]> {
     const answerRegions = regions.filter((region) => !region.isPrintedLabel);
     if (questions.length === 0 || answerRegions.length === 0) {
       return regions.map((region) => ({
@@ -58,11 +47,8 @@ export class MappingService {
     const matches: RegionMatch[] = [];
     const needsSemantic: MappableRegion[] = [];
 
-    // ---- pass 1: explicit labels -------------------------------------------
     for (const region of answerRegions) {
-      const hint = region.questionLabelHint
-        ? normalizeLabel(region.questionLabelHint)
-        : null;
+      const hint = region.questionLabelHint ? normalizeLabel(region.questionLabelHint) : null;
       const questionId = hint ? byLabel.get(hint) : undefined;
 
       if (questionId) {
@@ -77,7 +63,6 @@ export class MappingService {
       }
     }
 
-    // ---- pass 2: embeddings -------------------------------------------------
     if (needsSemantic.length > 0) {
       const semantic = await this.matchSemantically(questions, needsSemantic);
       matches.push(...semantic);
@@ -145,10 +130,7 @@ export class MappingService {
     }
   }
 
-  private matchLexically(
-    questions: MappableQuestion[],
-    region: MappableRegion,
-  ): RegionMatch {
+  private matchLexically(questions: MappableQuestion[], region: MappableRegion): RegionMatch {
     const regionTokens = tokenize(region.transcript);
     let bestIndex = -1;
     let bestScore = 0;
@@ -195,8 +177,31 @@ export function cosineSimilarity(a: number[] | undefined, b: number[] | undefine
 }
 
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'of', 'to', 'in', 'is', 'are', 'and', 'or', 'for', 'on', 'with',
-  'that', 'this', 'it', 'as', 'by', 'be', 'from', 'at', 'which', 'what', 'how', 'why',
+  'the',
+  'a',
+  'an',
+  'of',
+  'to',
+  'in',
+  'is',
+  'are',
+  'and',
+  'or',
+  'for',
+  'on',
+  'with',
+  'that',
+  'this',
+  'it',
+  'as',
+  'by',
+  'be',
+  'from',
+  'at',
+  'which',
+  'what',
+  'how',
+  'why',
 ]);
 
 function tokenize(text: string): Set<string> {

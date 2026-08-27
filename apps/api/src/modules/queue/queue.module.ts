@@ -11,11 +11,7 @@ import { ALL_QUEUES, PIPELINE_FLOW, QUEUES } from './queue.constants';
 import { PipelineService } from './pipeline.service';
 import { FailureReporter } from '@/workers/failure-reporter.service';
 
-/**
- * Redis connection options derived from REDIS_URL. `maxRetriesPerRequest: null`
- * is required by BullMQ — without it ioredis aborts in-flight blocking commands
- * and workers die on the first reconnect.
- */
+/** Redis connection options derived from REDIS_URL. */
 function redisOptions(config: ConfigService) {
   const url = new URL(config.getOrThrow<string>('REDIS_URL'));
   return {

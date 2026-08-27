@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Check, Loader2, RotateCcw } from 'lucide-react';
 import type { Evaluation } from '@vedaai/shared';
 
-/** Manual mark entry. Clamped to the question maximum on both ends. */
+/** Manual mark entry. */
 export function ScoreOverride({
   evaluation,
   max,
@@ -37,7 +37,7 @@ export function ScoreOverride({
 
   return (
     <div className="mt-2 flex items-center gap-2">
-      <label className="text-[11px] font-medium text-ink-500">Marks</label>
+      <label className="text-ink-500 text-[11px] font-medium">Marks</label>
       <input
         type="number"
         min={0}
@@ -45,15 +45,15 @@ export function ScoreOverride({
         step={0.5}
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        className="h-7 w-16 rounded-md border border-ink-200 px-2 text-[12px] tabular-nums outline-none transition-colors focus:border-brand-400"
+        className="border-ink-200 focus:border-brand-400 h-7 w-16 rounded-md border px-2 text-[12px] tabular-nums outline-none transition-colors"
       />
-      <span className="text-[11px] text-ink-400">of {max}</span>
+      <span className="text-ink-400 text-[11px]">of {max}</span>
 
       <button
         type="button"
         disabled={!dirty || saving}
         onClick={() => save(Number(value))}
-        className="ml-auto inline-flex h-7 items-center gap-1 rounded-full bg-ink-900 px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:bg-ink-200 disabled:text-ink-400"
+        className="bg-ink-900 hover:bg-ink-800 disabled:bg-ink-200 disabled:text-ink-400 ml-auto inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white transition-colors"
       >
         {saving ? (
           <Loader2 className="size-3 animate-spin" />
@@ -68,7 +68,7 @@ export function ScoreOverride({
           type="button"
           title={`Reset to the AI mark (${evaluation.aiMarks})`}
           onClick={() => save(evaluation.aiMarks)}
-          className="inline-flex size-7 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
+          className="text-ink-500 hover:bg-ink-100 hover:text-ink-900 inline-flex size-7 items-center justify-center rounded-full transition-colors"
         >
           <RotateCcw className="size-3" />
         </button>

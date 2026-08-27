@@ -1,11 +1,9 @@
 name: vedaai
 
-# Host ports are deliberately non-default: this machine already runs a native
-# PostgreSQL 18 service on 5432 and a separate "unischool" stack on 5433/6379.
-# VedaAI gets its own range so nothing can collide.
+# Host ports are deliberately off the defaults so they cannot collide with a
+# native Postgres or Redis already installed on the machine.
 services:
-  # Postgres with pgvector preinstalled — the plain postgres image will NOT work
-  # because the schema declares vector(768) columns.
+  # pgvector build required: the schema declares vector(768) columns.
   postgres:
     image: pgvector/pgvector:pg16
     container_name: vedaai-postgres
@@ -39,8 +37,7 @@ services:
       timeout: 3s
       retries: 10
 
-  # S3-compatible storage for local dev so you do not need R2 credentials on day
-  # one. Production uses Cloudflare R2 with the same S3 API.
+  # Stands in for Cloudflare R2 locally; same S3 API, no credentials needed.
   minio:
     image: minio/minio:latest
     container_name: vedaai-minio
@@ -60,7 +57,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # One-shot: creates the bucket and opens CORS so the browser can PUT directly.
+  # Creates the bucket on first run.
   minio-init:
     image: minio/mc:latest
     depends_on:

@@ -6,11 +6,7 @@ import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
 import { QUEUES, type PipelineJobData } from '@/modules/queue/queue.constants';
 
-/**
- * Stage 6. Runs once every question has been graded. Totals the paper, flips
- * the submission to READY_FOR_REVIEW, and emits the terminal event the web app
- * navigates on.
- */
+/** Stage 6. */
 @Processor(QUEUES.AGGREGATION)
 export class AggregationProcessor extends WorkerHost {
   private readonly logger = new Logger(AggregationProcessor.name);

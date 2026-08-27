@@ -9,12 +9,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import {
-  CLIENT_EVENTS,
-  SOCKET_NAMESPACE,
-  jobRoom,
-  submissionRoom,
-} from '@vedaai/shared';
+import { CLIENT_EVENTS, SOCKET_NAMESPACE, jobRoom, submissionRoom } from '@vedaai/shared';
 
 @WebSocketGateway({
   namespace: SOCKET_NAMESPACE,
@@ -38,10 +33,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage(CLIENT_EVENTS.SUBSCRIBE_JOB)
-  subscribeJob(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() body: { jobId: string },
-  ) {
+  subscribeJob(@ConnectedSocket() client: Socket, @MessageBody() body: { jobId: string }) {
     if (!body?.jobId) return { ok: false };
     void client.join(jobRoom(body.jobId));
     this.logger.debug(`${client.id} → ${jobRoom(body.jobId)}`);

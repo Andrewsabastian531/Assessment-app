@@ -14,10 +14,7 @@ import {
   type PipelineJobData,
 } from '@/modules/queue/queue.constants';
 
-/**
- * Stage 1. Turns the uploaded answer sheet into normalised page images in
- * storage, then fans out the rest of the pipeline.
- */
+/** Stage 1. */
 @Processor(QUEUES.INGEST)
 export class IngestProcessor extends WorkerHost {
   private readonly logger = new Logger(IngestProcessor.name);
@@ -103,11 +100,7 @@ export class IngestProcessor extends WorkerHost {
     return { pageCount: pages.length };
   }
 
-  /**
-   * Builds the rest of the pipeline as a BullMQ flow. `mapping` is the parent of
-   * question extraction and every per-page layout job, so BullMQ handles the
-   * fan-in: mapping only runs once all its children have succeeded.
-   */
+  /** Builds the rest of the pipeline as a BullMQ flow. */
   private async fanOut(
     data: PipelineJobData,
     pages: Array<{ id: string; pageIndex: number }>,

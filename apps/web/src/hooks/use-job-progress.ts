@@ -24,11 +24,7 @@ export interface JobProgressState {
   failed: JobFailedPayload | null;
 }
 
-/**
- * Subscribes to one grading job over Socket.io. The "Extracting…" screen shows
- * a static subtitle in the design; this feeds it live stage text instead, and
- * degrades to the static copy when the socket is unavailable.
- */
+/** Subscribes to one grading job over Socket.io. */
 export function useJobProgress(jobId: string | null): JobProgressState {
   const [state, setState] = React.useState<JobProgressState>({
     percent: 0,
@@ -66,10 +62,7 @@ export function useJobProgress(jobId: string | null): JobProgressState {
         // Progress can arrive out of order across concurrent page workers, so
         // never let the bar move backwards.
         percent: Math.max(prev.percent, payload.percent),
-        message:
-          payload.message ||
-          STAGE_LABELS[payload.stage] ||
-          'This may take a while',
+        message: payload.message || STAGE_LABELS[payload.stage] || 'This may take a while',
       }));
     });
 

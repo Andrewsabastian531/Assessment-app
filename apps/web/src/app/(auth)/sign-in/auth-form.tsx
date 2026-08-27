@@ -34,10 +34,7 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
     setError(null);
 
     const endpoint = mode === 'signin' ? '/api/auth/login' : '/api/auth/register';
-    const body =
-      mode === 'signin'
-        ? { email: form.email, password: form.password }
-        : form;
+    const body = mode === 'signin' ? { email: form.email, password: form.password } : form;
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -63,9 +60,9 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
         <Logo />
       </div>
 
-      <div className="rounded-card border border-ink-200 bg-white p-6 shadow-card">
+      <div className="rounded-card border-ink-200 shadow-card border bg-white p-6">
         {/* mode switch */}
-        <div className="mb-5 flex gap-1 rounded-full bg-ink-100 p-1">
+        <div className="bg-ink-100 mb-5 flex gap-1 rounded-full p-1">
           {(['signin', 'signup'] as const).map((value) => (
             <button
               key={value}
@@ -77,7 +74,7 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
               className={cn(
                 'flex-1 rounded-full py-1.5 text-[12.5px] font-semibold transition-colors',
                 mode === value
-                  ? 'bg-white text-ink-900 shadow-card'
+                  ? 'text-ink-900 shadow-card bg-white'
                   : 'text-ink-500 hover:text-ink-800',
               )}
             >
@@ -86,7 +83,7 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
           ))}
         </div>
 
-        <h1 className="text-[19px] font-bold tracking-tight text-ink-900">
+        <h1 className="text-ink-900 text-[19px] font-bold tracking-tight">
           {mode === 'signin' ? (
             <>
               Sign in to <span className="text-brand-500">VedaAI</span>
@@ -97,7 +94,7 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
             </>
           )}
         </h1>
-        <p className="mt-1 text-[12.5px] text-ink-600">
+        <p className="text-ink-600 mt-1 text-[12.5px]">
           {mode === 'signin'
             ? 'Grade a paper with AI in minutes.'
             : 'Tell us who you are and where you teach.'}
@@ -152,7 +149,7 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
           />
 
           {error && (
-            <p className="flex items-start gap-1.5 text-[12px] text-danger-600">
+            <p className="text-danger-600 flex items-start gap-1.5 text-[12px]">
               <AlertCircle className="mt-px size-3.5 shrink-0" />
               {error}
             </p>
@@ -161,7 +158,7 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
           <button
             type="submit"
             disabled={pending}
-            className="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-ink-900 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:bg-ink-300"
+            className="bg-ink-900 hover:bg-ink-800 disabled:bg-ink-300 mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-full text-[13px] font-semibold text-white transition-colors"
           >
             {pending && <Loader2 className="size-4 animate-spin" />}
             {mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -171,16 +168,16 @@ export function AuthForm({ googleEnabled }: { googleEnabled: boolean }) {
         {googleEnabled && (
           <>
             <div className="my-4 flex items-center gap-3">
-              <span className="h-px flex-1 bg-ink-200" />
-              <span className="text-[11px] font-medium uppercase tracking-wide text-ink-400">
+              <span className="bg-ink-200 h-px flex-1" />
+              <span className="text-ink-400 text-[11px] font-medium uppercase tracking-wide">
                 or
               </span>
-              <span className="h-px flex-1 bg-ink-200" />
+              <span className="bg-ink-200 h-px flex-1" />
             </div>
 
             <a
               href="/api/auth/google/start"
-              className="flex h-10 items-center justify-center gap-2.5 rounded-full border border-ink-200 text-[13px] font-semibold text-ink-800 transition-colors hover:bg-ink-50"
+              className="border-ink-200 text-ink-800 hover:bg-ink-50 flex h-10 items-center justify-center gap-2.5 rounded-full border text-[13px] font-semibold transition-colors"
             >
               <GoogleMark />
               Continue with Google
@@ -199,12 +196,12 @@ function Field({
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-medium text-ink-700">{label}</span>
+      <span className="text-ink-700 text-[12.5px] font-medium">{label}</span>
       <input
         {...props}
-        className="h-10 rounded-lg border border-ink-200 px-3 text-[14px] outline-none transition-colors focus:border-brand-400"
+        className="border-ink-200 focus:border-brand-400 h-10 rounded-lg border px-3 text-[14px] outline-none transition-colors"
       />
-      {hint && <span className="text-[11px] text-ink-400">{hint}</span>}
+      {hint && <span className="text-ink-400 text-[11px]">{hint}</span>}
     </label>
   );
 }

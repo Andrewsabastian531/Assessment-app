@@ -1,12 +1,7 @@
 import type { ZodTypeAny } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-/**
- * Keys Gemini's `responseSchema` accepts. It implements a subset of OpenAPI 3
- * and rejects the whole request if it sees anything outside this list — including
- * the `additionalProperties` and `$schema` that zod-to-json-schema emits by
- * default, and the `default` that `.default()` produces.
- */
+/** Keys Gemini's `responseSchema` accepts. */
 const GEMINI_ALLOWED_KEYS = new Set([
   'type',
   'format',
@@ -21,13 +16,7 @@ const GEMINI_ALLOWED_KEYS = new Set([
 
 type JsonSchemaNode = Record<string, unknown>;
 
-/**
- * Converts a Zod schema to a Gemini-safe response schema.
- *
- * `$refStrategy: 'none'` inlines every definition — Gemini does not resolve
- * `$ref`. `target: 'openApi3'` emits `nullable: true` rather than a `["string",
- * "null"]` type union, which Gemini also rejects.
- */
+/** Converts a Zod schema to a Gemini-safe response schema. */
 export function toGeminiSchema(schema: ZodTypeAny, name: string): JsonSchemaNode {
   // Cast: the library's generic recursion exceeds TypeScript's instantiation
   // depth on deeply nested schemas; the runtime call is unaffected.
@@ -74,9 +63,8 @@ function sanitize(node: unknown): JsonSchemaNode {
     }
   }
 
-  // A property that Zod made optional via `.default()` loses its default here,
-  // so make sure it is not also listed as required — the model would be forced
-  // to invent a value.
+  // `.default()` makes a property optional, but its default is stripped above, so it
+  // must not stay in `required` or the model is forced to invent a value.
   if (Array.isArray(output.required) && output.properties) {
     const known = Object.keys(output.properties as JsonSchemaNode);
     output.required = (output.required as string[]).filter((key) => known.includes(key));

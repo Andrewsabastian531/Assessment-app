@@ -11,11 +11,7 @@ import type {
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
-/**
- * Set NEXT_PUBLIC_UI_PREVIEW=1 to exercise the UI without a running backend.
- * Uploads are simulated in the browser and nothing leaves the page. Off by
- * default so a misconfigured deploy fails loudly instead of faking success.
- */
+/** Set NEXT_PUBLIC_UI_PREVIEW=1 to exercise the UI without a running backend. */
 export const UI_PREVIEW = process.env.NEXT_PUBLIC_UI_PREVIEW === '1';
 
 export class ApiError extends Error {
@@ -69,8 +65,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  deleteAsset: (assetId: string) =>
-    request<void>(`/assets/${assetId}`, { method: 'DELETE' }),
+  deleteAsset: (assetId: string) => request<void>(`/assets/${assetId}`, { method: 'DELETE' }),
 
   startMapping: (assessmentId: string, body: StartMappingInput) =>
     request<StartMappingResponse>(`/assessments/${assessmentId}/start-mapping`, {
@@ -98,8 +93,8 @@ export const api = {
 };
 
 /**
- * Uploads straight to object storage with XHR rather than fetch, because fetch
- * still cannot report upload progress and the file chips show a progress bar.
+ * Uploads straight to object storage with XHR rather than fetch, because fetch still
+ * cannot report upload progress and the file chips show a progress bar.
  */
 export function putToStorage(
   url: string,

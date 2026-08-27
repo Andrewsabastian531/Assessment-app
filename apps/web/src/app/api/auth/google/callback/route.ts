@@ -35,9 +35,7 @@ export async function GET(request: Request) {
     }),
   }).catch(() => null);
 
-  const tokens = (await tokenResponse?.json().catch(() => null)) as
-    | { id_token?: string }
-    | null;
+  const tokens = (await tokenResponse?.json().catch(() => null)) as { id_token?: string } | null;
 
   if (!tokenResponse?.ok || !tokens?.id_token) {
     return fail(request, 'google-token-exchange-failed');

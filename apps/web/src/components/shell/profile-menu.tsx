@@ -2,14 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import {
-  BookMarked,
-  ChevronDown,
-  LogOut,
-  Settings,
-  SquarePen,
-  UserRound,
-} from 'lucide-react';
+import { BookMarked, ChevronDown, LogOut, Settings, SquarePen, UserRound } from 'lucide-react';
 import type { SessionUser } from '@vedaai/shared';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, initials } from '@/lib/utils';
@@ -22,8 +15,8 @@ const MENU_ITEMS = [
 ];
 
 /**
- * Avatar button that toggles a dropdown with the signed-in identity, account
- * links and a logout action.
+ * Avatar button that toggles a dropdown with the signed-in identity, account links and
+ * a logout action.
  */
 export function ProfileMenu({ user }: { user: SessionUser }) {
   const [open, setOpen] = React.useState(false);
@@ -73,12 +66,12 @@ export function ProfileMenu({ user }: { user: SessionUser }) {
           {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
           <AvatarFallback>{initials(user.name)}</AvatarFallback>
         </Avatar>
-        <span className="hidden max-w-[140px] truncate text-[13px] font-medium text-ink-900 lg:inline">
+        <span className="text-ink-900 hidden max-w-[140px] truncate text-[13px] font-medium lg:inline">
           {user.name}
         </span>
         <ChevronDown
           className={cn(
-            'hidden size-4 text-ink-500 transition-transform lg:inline',
+            'text-ink-500 hidden size-4 transition-transform lg:inline',
             open && 'rotate-180',
           )}
         />
@@ -87,21 +80,19 @@ export function ProfileMenu({ user }: { user: SessionUser }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[248px] overflow-hidden rounded-card border border-ink-200 bg-white shadow-pop"
+          className="rounded-card border-ink-200 shadow-pop absolute right-0 top-[calc(100%+8px)] z-50 w-[248px] overflow-hidden border bg-white"
         >
           {/* identity header */}
-          <div className="flex items-center gap-2.5 border-b border-ink-100 px-3 py-3">
+          <div className="border-ink-100 flex items-center gap-2.5 border-b px-3 py-3">
             <Avatar className="size-9">
               {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
               <AvatarFallback>{initials(user.name)}</AvatarFallback>
             </Avatar>
             <span className="min-w-0">
-              <span className="block truncate text-[13px] font-semibold text-ink-900">
+              <span className="text-ink-900 block truncate text-[13px] font-semibold">
                 {user.name}
               </span>
-              <span className="block truncate text-[11.5px] text-ink-500">
-                {user.email}
-              </span>
+              <span className="text-ink-500 block truncate text-[11.5px]">{user.email}</span>
             </span>
           </div>
 
@@ -114,22 +105,22 @@ export function ProfileMenu({ user }: { user: SessionUser }) {
                   href={item.href}
                   role="menuitem"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-ink-700 transition-colors hover:bg-ink-50 hover:text-ink-900"
+                  className="text-ink-700 hover:bg-ink-50 hover:text-ink-900 flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors"
                 >
-                  <Icon className="size-4 text-ink-500" />
+                  <Icon className="text-ink-500 size-4" />
                   {item.label}
                 </Link>
               );
             })}
           </div>
 
-          <div className="border-t border-ink-100 p-2">
+          <div className="border-ink-100 border-t p-2">
             <button
               type="button"
               role="menuitem"
               disabled={signingOut}
               onClick={handleLogout}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-ink-200 py-2 text-[12px] font-semibold uppercase tracking-wide text-ink-700 transition-colors hover:bg-danger-100 hover:text-danger-600 disabled:opacity-60"
+              className="border-ink-200 text-ink-700 hover:bg-danger-100 hover:text-danger-600 flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-[12px] font-semibold uppercase tracking-wide transition-colors disabled:opacity-60"
             >
               <LogOut className="size-3.5" />
               {signingOut ? 'Signing out…' : 'Logout'}

@@ -71,7 +71,7 @@ export function Dropzone({ label, accent, disabled, onFileSelected }: DropzonePr
           accept(event.dataTransfer.files[0]);
         }}
         className={cn(
-          'group flex h-[104px] w-full flex-col items-center justify-center gap-1.5 rounded-drop border border-dashed bg-white transition-colors sm:h-[118px]',
+          'rounded-drop group flex h-[104px] w-full flex-col items-center justify-center gap-1.5 border border-dashed bg-white transition-colors sm:h-[118px]',
           dragging
             ? 'border-brand-500 bg-brand-50'
             : 'border-ink-300 hover:border-brand-300 hover:bg-brand-50/40',
@@ -81,24 +81,24 @@ export function Dropzone({ label, accent, disabled, onFileSelected }: DropzonePr
       >
         <span
           className={cn(
-            'flex size-8 items-center justify-center rounded-lg bg-ink-100 transition-colors',
+            'bg-ink-100 flex size-8 items-center justify-center rounded-lg transition-colors',
             dragging && 'bg-brand-100',
           )}
         >
           <Upload
-            className={cn('size-4 text-ink-600', dragging && 'text-brand-600')}
+            className={cn('text-ink-600 size-4', dragging && 'text-brand-600')}
             strokeWidth={2}
           />
         </span>
 
-        <span className="text-[14px] font-semibold text-ink-900">
+        <span className="text-ink-900 text-[14px] font-semibold">
           {label} <span className="text-brand-500">{accent}</span>
         </span>
-        <span className="text-[11.5px] text-ink-400">{MAX_UPLOAD_LABEL}</span>
+        <span className="text-ink-400 text-[11.5px]">{MAX_UPLOAD_LABEL}</span>
       </button>
 
       {error && (
-        <span className="flex items-center gap-1.5 px-1 text-[11.5px] text-danger-600">
+        <span className="text-danger-600 flex items-center gap-1.5 px-1 text-[11.5px]">
           <AlertCircle className="size-3.5" />
           {error}
         </span>

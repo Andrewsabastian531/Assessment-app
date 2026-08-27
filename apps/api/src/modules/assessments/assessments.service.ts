@@ -70,11 +70,7 @@ export class AssessmentsService {
     return this.toDto(assessment);
   }
 
-  /**
-   * Issues a pre-signed PUT so the browser uploads straight to object storage.
-   * The asset row is created up front but marked `uploaded: false` until the
-   * browser confirms — an abandoned upload leaves no half-valid record.
-   */
+  /** Issues a pre-signed PUT so the browser uploads straight to object storage. */
   async presignUpload(
     user: AuthenticatedUser,
     assessmentId: string,
@@ -99,11 +95,7 @@ export class AssessmentsService {
       },
     });
 
-    const presigned = await this.storage.presignPut(
-      storageKey,
-      input.mimeType,
-      input.sizeBytes,
-    );
+    const presigned = await this.storage.presignPut(storageKey, input.mimeType, input.sizeBytes);
 
     return {
       assetId: asset.id,
@@ -114,11 +106,7 @@ export class AssessmentsService {
     };
   }
 
-  async confirmUpload(
-    user: AuthenticatedUser,
-    assessmentId: string,
-    input: ConfirmUploadInput,
-  ) {
+  async confirmUpload(user: AuthenticatedUser, assessmentId: string, input: ConfirmUploadInput) {
     await this.assertOwns(user, assessmentId);
     await this.prisma.asset.update({
       where: { id: input.assetId },
@@ -193,11 +181,7 @@ export class AssessmentsService {
     }));
   }
 
-  async updateQuestion(
-    user: AuthenticatedUser,
-    questionId: string,
-    input: UpdateQuestionInput,
-  ) {
+  async updateQuestion(user: AuthenticatedUser, questionId: string, input: UpdateQuestionInput) {
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
       include: { assessment: { select: { teacherId: true } } },

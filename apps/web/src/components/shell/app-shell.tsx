@@ -21,10 +21,7 @@ interface ShellContextValue {
 
 const ShellContext = React.createContext<ShellContextValue | null>(null);
 
-/**
- * Lets a route drive the shell chrome. The "Extracting…" screen calls
- * `useShellCollapse(true)` to reproduce the icon-rail state in the design.
- */
+/** Lets a route drive the shell chrome. */
 export function useShell() {
   const ctx = React.useContext(ShellContext);
   if (!ctx) throw new Error('useShell must be used inside <AppShell>');
@@ -48,7 +45,7 @@ export function useBreadcrumb(label: string) {
 }
 
 interface AppShellProps {
-  /** The signed-in teacher. Everything in the chrome renders from this. */
+  /** The signed-in teacher. */
   user: SessionUser;
   children: React.ReactNode;
 }
@@ -66,14 +63,11 @@ export function AppShell({ user, children }: AppShellProps) {
     setMobileNavOpen(false);
   }, [pathname]);
 
-  const value = React.useMemo(
-    () => ({ collapsed, setCollapsed, setBreadcrumb }),
-    [collapsed],
-  );
+  const value = React.useMemo(() => ({ collapsed, setCollapsed, setBreadcrumb }), [collapsed]);
 
   return (
     <ShellContext.Provider value={value}>
-      <div className="flex h-dvh overflow-hidden bg-surface-muted">
+      <div className="bg-surface-muted flex h-dvh overflow-hidden">
         <Sidebar collapsed={collapsed} school={school} />
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -92,15 +86,15 @@ export function AppShell({ user, children }: AppShellProps) {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <div className="flex h-topbar items-center px-4">
+          <div className="h-topbar flex items-center px-4">
             <Logo />
           </div>
           <div className="px-3 pb-2">
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[13px] font-semibold text-white ring-2 ring-brand-500/70"
+              className="bg-ink-900 ring-brand-500/70 flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold text-white ring-2"
             >
-              <Sparkles className="size-4 text-brand-400" />
+              <Sparkles className="text-brand-400 size-4" />
               AI Teacher&apos;s Toolkit
             </button>
           </div>
@@ -113,13 +107,11 @@ export function AppShell({ user, children }: AppShellProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-nav px-3 py-2 text-[13.5px] font-medium transition-colors',
+                    'rounded-nav flex items-center gap-3 px-3 py-2 text-[13.5px] font-medium transition-colors',
                     active ? 'bg-ink-100 text-ink-900' : 'text-ink-600 hover:bg-ink-50',
                   )}
                 >
-                  <Icon
-                    className={cn('size-[17px]', active ? 'text-ink-900' : 'text-ink-500')}
-                  />
+                  <Icon className={cn('size-[17px]', active ? 'text-ink-900' : 'text-ink-500')} />
                   {item.label}
                 </Link>
               );
@@ -128,9 +120,9 @@ export function AppShell({ user, children }: AppShellProps) {
           <div className="flex flex-col gap-3 px-3 pb-4">
             <Link
               href="/settings"
-              className="flex items-center gap-3 rounded-nav px-3 py-2 text-[13.5px] font-medium text-ink-600"
+              className="rounded-nav text-ink-600 flex items-center gap-3 px-3 py-2 text-[13.5px] font-medium"
             >
-              <Settings className="size-[17px] text-ink-500" />
+              <Settings className="text-ink-500 size-[17px]" />
               Settings
             </Link>
             {school && <SchoolCard school={school} />}

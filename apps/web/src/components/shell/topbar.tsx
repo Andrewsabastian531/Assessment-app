@@ -36,22 +36,17 @@ export function Topbar({
   const router = useRouter();
 
   return (
-    <header className="relative z-30 flex h-topbar shrink-0 items-center justify-between border-b border-ink-200 bg-white px-3 sm:px-4">
+    <header className="h-topbar border-ink-200 relative z-30 flex shrink-0 items-center justify-between border-b bg-white px-3 sm:px-4">
       <div className="flex min-w-0 items-center gap-1.5">
-        {/*
-          The sidebar toggle lives here rather than inside the sidebar itself.
-          Inside the rail it had nowhere to go once collapsed — 64px cannot hold
-          both the logo and the control, so the button ended up underneath the
-          logo and became unclickable. In the topbar it is always visible and
-          always in the same place, in both states.
-        */}
+        {/* Lives here, not in the sidebar: the 64px collapsed rail cannot hold
+            both the logo and this control. */}
         <button
           type="button"
           onClick={onToggleSidebar}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-pressed={!sidebarCollapsed}
           title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="hidden rounded-md p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 lg:inline-flex"
+          className="text-ink-600 hover:bg-ink-100 hover:text-ink-900 hidden rounded-md p-1.5 transition-colors lg:inline-flex"
         >
           <PanelLeft
             className={cn('size-[18px] transition-transform', sidebarCollapsed && 'rotate-180')}
@@ -62,13 +57,13 @@ export function Topbar({
           type="button"
           onClick={() => router.back()}
           aria-label="Go back"
-          className="rounded-md p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+          className="text-ink-600 hover:bg-ink-100 hover:text-ink-900 rounded-md p-1.5 transition-colors"
         >
           <ArrowLeft className="size-[18px]" />
         </button>
 
-        <span className="hidden items-center gap-1.5 text-[13px] font-medium text-ink-600 lg:flex">
-          <ClipboardList className="size-4 text-ink-500" />
+        <span className="text-ink-600 hidden items-center gap-1.5 text-[13px] font-medium lg:flex">
+          <ClipboardList className="text-ink-500 size-4" />
           {breadcrumb}
         </span>
 
@@ -86,7 +81,7 @@ export function Topbar({
           <span className="relative">
             <Bell className="size-[18px]" />
             {hasNotifications && (
-              <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-brand-500 ring-2 ring-white" />
+              <span className="bg-brand-500 absolute -right-0.5 -top-0.5 size-1.5 rounded-full ring-2 ring-white" />
             )}
           </span>
         </IconAction>
@@ -101,7 +96,7 @@ export function Topbar({
           type="button"
           onClick={onOpenMobileNav}
           aria-label="Open menu"
-          className="ml-0.5 rounded-md p-1.5 text-ink-700 transition-colors hover:bg-ink-100 lg:hidden"
+          className="text-ink-700 hover:bg-ink-100 ml-0.5 rounded-md p-1.5 transition-colors lg:hidden"
         >
           <Menu className="size-[18px]" />
         </button>
@@ -110,17 +105,8 @@ export function Topbar({
   );
 }
 
-/**
- * Wraps an action that is not built yet. Uses hover and focus rather than the
- * `title` attribute so the copy appears immediately and is keyboard reachable.
- */
-function ComingSoonTooltip({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+/** Wraps an action that is not built yet. */
+function ComingSoonTooltip({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -133,7 +119,7 @@ function ComingSoonTooltip({
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        className="inline-flex items-center justify-center rounded-md p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+        className="text-ink-600 hover:bg-ink-100 hover:text-ink-900 inline-flex items-center justify-center rounded-md p-1.5 transition-colors"
       >
         {children}
       </button>
@@ -142,10 +128,10 @@ function ComingSoonTooltip({
         <span
           id="coming-soon-tip"
           role="tooltip"
-          className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-50 whitespace-nowrap rounded-md bg-ink-900 px-2.5 py-1.5 text-[11.5px] font-medium text-white shadow-pop"
+          className="bg-ink-900 shadow-pop pointer-events-none absolute right-0 top-[calc(100%+6px)] z-50 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[11.5px] font-medium text-white"
         >
           Will be released soon
-          <span className="ml-1.5 text-ink-400">v1.1.0</span>
+          <span className="text-ink-400 ml-1.5">v1.1.0</span>
         </span>
       )}
     </span>
@@ -166,7 +152,7 @@ function IconAction({
       type="button"
       aria-label={label}
       className={cn(
-        'inline-flex items-center justify-center rounded-md p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900',
+        'text-ink-600 hover:bg-ink-100 hover:text-ink-900 inline-flex items-center justify-center rounded-md p-1.5 transition-colors',
         className,
       )}
     >

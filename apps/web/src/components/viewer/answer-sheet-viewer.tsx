@@ -50,7 +50,7 @@ export function AnswerSheetViewer({
 
   if (!page) {
     return (
-      <div className="flex h-full items-center justify-center text-[13px] text-ink-500">
+      <div className="text-ink-500 flex h-full items-center justify-center text-[13px]">
         No answer sheet pages
       </div>
     );
@@ -59,11 +59,11 @@ export function AnswerSheetViewer({
   return (
     <div className="flex h-full flex-col">
       {/* toolbar */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-ink-200 px-3">
-        <span className="text-[12.5px] font-semibold text-ink-900">Answer Sheet</span>
+      <div className="border-ink-200 flex h-11 shrink-0 items-center justify-between border-b px-3">
+        <span className="text-ink-900 text-[12.5px] font-semibold">Answer Sheet</span>
 
         <div className="flex items-center gap-1">
-          <div className="flex items-center rounded-full border border-ink-200">
+          <div className="border-ink-200 flex items-center rounded-full border">
             <IconButton
               label="Zoom out"
               disabled={zoomIndex === 0}
@@ -71,21 +71,19 @@ export function AnswerSheetViewer({
             >
               <Minus className="size-3.5" />
             </IconButton>
-            <span className="min-w-[42px] text-center text-[11.5px] font-medium tabular-nums text-ink-700">
+            <span className="text-ink-700 min-w-[42px] text-center text-[11.5px] font-medium tabular-nums">
               {zoom}%
             </span>
             <IconButton
               label="Zoom in"
               disabled={zoomIndex === ZOOM_STEPS.length - 1}
-              onClick={() =>
-                setZoomIndex((index) => Math.min(ZOOM_STEPS.length - 1, index + 1))
-              }
+              onClick={() => setZoomIndex((index) => Math.min(ZOOM_STEPS.length - 1, index + 1))}
             >
               <Plus className="size-3.5" />
             </IconButton>
           </div>
 
-          <div className="ml-1 flex items-center rounded-full border border-ink-200">
+          <div className="border-ink-200 ml-1 flex items-center rounded-full border">
             <IconButton
               label="Previous page"
               disabled={pageIndex === 0}
@@ -93,7 +91,7 @@ export function AnswerSheetViewer({
             >
               <ChevronLeft className="size-3.5" />
             </IconButton>
-            <span className="whitespace-nowrap px-1 text-[11.5px] font-medium tabular-nums text-ink-700">
+            <span className="text-ink-700 whitespace-nowrap px-1 text-[11.5px] font-medium tabular-nums">
               Page {pageIndex + 1} of {pages.length}
             </span>
             <IconButton
@@ -108,9 +106,9 @@ export function AnswerSheetViewer({
       </div>
 
       {/* canvas */}
-      <div ref={scrollRef} className="scrollbar-slim min-h-0 flex-1 overflow-auto bg-ink-100 p-4">
+      <div ref={scrollRef} className="scrollbar-slim bg-ink-100 min-h-0 flex-1 overflow-auto p-4">
         <div
-          className="relative mx-auto bg-white shadow-card"
+          className="shadow-card relative mx-auto bg-white"
           style={{ width: `${zoom}%`, aspectRatio: `${page.width} / ${page.height}` }}
         >
           {page.imageUrl && (
@@ -151,7 +149,7 @@ function IconButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex size-7 items-center justify-center rounded-full text-ink-600 transition-colors',
+        'text-ink-600 flex size-7 items-center justify-center rounded-full transition-colors',
         disabled ? 'opacity-30' : 'hover:bg-ink-100 hover:text-ink-900',
       )}
     >

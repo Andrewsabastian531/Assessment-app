@@ -5,13 +5,7 @@ import { TOKEN_COOKIE } from './auth-cookie';
 
 export { TOKEN_COOKIE };
 
-/**
- * Reads the current teacher from the API using the httpOnly cookie set at login.
- *
- * The same cookie is sent automatically by the browser on client-side calls to
- * the API (localhost:3000 and localhost:4000 are the same site, so a Lax cookie
- * crosses the port boundary), which is why no token has to reach client JS.
- */
+/** Reads the current teacher from the API using the httpOnly cookie set at login. */
 export async function getSession(): Promise<SessionUser | null> {
   const token = (await cookies()).get(TOKEN_COOKIE)?.value;
   if (!token) return null;

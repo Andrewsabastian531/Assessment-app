@@ -1,17 +1,5 @@
 #!/usr/bin/env node
-/**
- * Stops the dev servers, including the whole process tree they belong to.
- *
- * `turbo run dev` fans out into a tree: turbo at the root, one Node per app, one
- * per watch task. In some Windows terminals Ctrl+C reaches only the foreground
- * process and the rest are orphaned, holding the ports so the next `pnpm dev`
- * dies with EADDRINUSE.
- *
- * Killing the port holder alone is not enough — it is a *leaf*, so its parent
- * (turbo) and its siblings survive. This walks UP from each port holder to the
- * root of the run and kills that whole tree instead, which keeps the blast
- * radius scoped to this repo's dev processes rather than every Node on the box.
- */
+/** Stops the dev servers, including the whole process tree they belong to. */
 import { execSync } from 'node:child_process';
 
 const PORTS = [Number(process.env.WEB_PORT) || 3000, Number(process.env.API_PORT) || 4000];
@@ -20,8 +8,7 @@ const isWindows = process.platform === 'win32';
 /** Process names that can appear in a `pnpm dev` tree. */
 const TREE_NAMES = /^(node|turbo|pnpm|npm|sh|bash|cmd|conhost)(\.exe)?$/i;
 
-const run = (cmd) =>
-  execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+const run = (cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 
 function pidsOnPort(port) {
   try {
@@ -76,8 +63,8 @@ function processTable() {
 }
 
 /**
- * Climbs from a leaf to the highest ancestor that still looks like part of the
- * dev run, so we kill turbo rather than one of its children.
+ * Climbs from a leaf to the highest ancestor that still looks like part of the dev run,
+ * so we kill turbo rather than one of its children.
  */
 function rootOfRun(pid, table) {
   let current = pid;

@@ -9,8 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         // The primary CTA in the design is a solid near-black pill.
-        primary:
-          'bg-ink-900 text-white hover:bg-ink-800 disabled:bg-ink-200 disabled:text-ink-400',
+        primary: 'bg-ink-900 text-white hover:bg-ink-800 disabled:bg-ink-200 disabled:text-ink-400',
         brand: 'bg-brand-500 text-white hover:bg-brand-600 disabled:bg-brand-200',
         outline: 'border border-ink-200 bg-white text-ink-900 hover:bg-ink-50',
         ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
@@ -32,8 +31,7 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
