@@ -410,9 +410,14 @@ talk to the API directly.
 ### 6. Check it
 
 ```bash
-curl https://vedaai-api.onrender.com/api/v1/health      # {"status":"ok"}
-curl https://vedaai-api.onrender.com/api/v1/health/ai   # {"ok":true,...}
+curl https://vedaai-api.onrender.com/api/v1/health          # database
+curl https://vedaai-api.onrender.com/api/v1/health/ai       # model + key
+curl https://vedaai-api.onrender.com/api/v1/health/storage  # bucket reachable
 ```
+
+`/health/storage` is worth running before your first upload. Pre-signing a URL is pure
+computation and never touches the network, so a wrong `S3_ENDPOINT` stays invisible until
+a worker tries to read the file back — long after the upload appeared to succeed.
 
 Then sign up on the Vercel URL and grade one paper end to end. First request after a
 quiet spell is slow while the instance wakes.

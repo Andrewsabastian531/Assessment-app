@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   DeleteObjectCommand,
+  HeadBucketCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -114,13 +115,28 @@ export class StorageService {
     );
   }
 
+  /**
+   * Confirms the endpoint, credentials and bucket actually work. Pre-signing is
+   * pure computation and never touches the network, so a misconfigured endpoint
+   * stays invisible until a worker tries to read a file back.
+   */
+  async check(): Promise<{ ok: boolean; endpoint: string; bucket: string; error?: string }> {
+    const endpoint = this.config.get<string>('S3_ENDPOINT', '');
+    try {
+      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      return { ok: true, endpoint, bucket: this.bucket };
+    } catch (error) {
+      return { ok: false, endpoint, bucket: this.bucket, error: explain(error as Error) };
+    }
+  }
+
   async delete(storageKey: string): Promise<void> {
     try {
       await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }));
     } catch (error) {
       // A missing object is not worth failing the request over — the caller has
       // already removed the database row.
-      this.logger.warn(`Could not delete ${storageKey}: ${(error as Error).message}`);
+      this.logger.warn(`Could not delete ${storageKey}: ${explain(error as Error)}`);
     }
   }
 }
@@ -129,4 +145,31 @@ function toBoolean(value: unknown, fallback: boolean): boolean {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') return value.toLowerCase() === 'true';
   return fallback;
+}
+
+/** Turns a transport-level failure into something that names the likely cause. */
+function explain(error: Error): string {
+  const message = error.message ?? String(error);
+
+  if (/EPROTO|handshake failure|SSL alert/i.test(message)) {
+    return (
+      `TLS handshake with the storage endpoint failed. S3_ENDPOINT is probably not an ` +
+      `S3 API URL. Supabase expects https://<project>.supabase.co/storage/v1/s3 and ` +
+      `S3_FORCE_PATH_STYLE=true; R2 expects https://<account>.r2.cloudflarestorage.com ` +
+      `and S3_FORCE_PATH_STYLE=false. (${message})`
+    );
+  }
+  if (/ENOTFOUND|EAI_AGAIN/i.test(message)) {
+    return `The storage host does not resolve. Check S3_ENDPOINT for a typo. (${message})`;
+  }
+  if (/ECONNREFUSED/i.test(message)) {
+    return `The storage endpoint refused the connection. (${message})`;
+  }
+  if (/SignatureDoesNotMatch/i.test(message)) {
+    return `Storage rejected the signature. Check the key pair and S3_REGION. (${message})`;
+  }
+  if (/NoSuchBucket|NotFound/i.test(message)) {
+    return `The bucket does not exist at that endpoint. Check S3_BUCKET. (${message})`;
+  }
+  return message;
 }
