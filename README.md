@@ -339,6 +339,18 @@ Copy both connection strings — the pooled one for `DATABASE_URL`, the direct o
 
 ### 2. Storage
 
+Either works. R2 is more generous but wants a card on file; Supabase Storage has a
+1GB free tier and no card. The two need different addressing:
+
+| | R2 | Supabase Storage |
+|---|---|---|
+| `S3_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` | `https://<PROJECT>.supabase.co/storage/v1/s3` |
+| `S3_REGION` | `auto` | the project's region, e.g. `ap-south-1` |
+| `S3_FORCE_PATH_STYLE` | `false` | **`true`** |
+
+Getting `S3_FORCE_PATH_STYLE` wrong is quiet: the pre-signed URL is generated happily
+and the browser's upload then fails with a 404 or a signature mismatch.
+
 Cloudflare dashboard → R2 → create bucket `vedaai-uploads`, then **Manage API Tokens**
 → Object Read & Write. You need `S3_ENDPOINT="https://<ACCOUNT_ID>.r2.cloudflarestorage.com"`,
 the key pair, and `S3_FORCE_PATH_STYLE=false`.

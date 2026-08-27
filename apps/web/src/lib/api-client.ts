@@ -9,7 +9,14 @@ import type {
   StartMappingResponse,
 } from '@vedaai/shared';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+/**
+ * A trailing slash pasted into the host config produces `//api/v1/...`, which
+ * the API answers with a bare "Cannot POST". Normalise once, here.
+ */
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(
+  /\/+$/,
+  '',
+);
 
 /** Set NEXT_PUBLIC_UI_PREVIEW=1 to exercise the UI without a running backend. */
 export const UI_PREVIEW = process.env.NEXT_PUBLIC_UI_PREVIEW === '1';

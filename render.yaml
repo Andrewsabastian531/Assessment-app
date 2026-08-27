@@ -68,10 +68,15 @@ services:
         sync: false
       - key: S3_PUBLIC_URL
         sync: false
+      # R2 wants region "auto" and virtual-host addressing. Supabase Storage
+      # wants its project's real region and path-style, so neither can be
+      # hardcoded here.
+      #   R2       -> S3_REGION=auto              S3_FORCE_PATH_STYLE=false
+      #   Supabase -> S3_REGION=<project region>  S3_FORCE_PATH_STYLE=true
       - key: S3_REGION
-        value: auto
+        sync: false
       - key: S3_FORCE_PATH_STYLE
-        value: false
+        sync: false
       - key: GOOGLE_AI_API_KEY
         sync: false
       - key: AI_PROVIDER

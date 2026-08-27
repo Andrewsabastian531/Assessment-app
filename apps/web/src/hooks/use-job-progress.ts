@@ -14,7 +14,7 @@ import {
   type ServerToClientEvents,
 } from '@vedaai/shared';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000';
+const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
 
 export interface JobProgressState {
   percent: number;
