@@ -4,10 +4,11 @@ import { Job } from 'bullmq';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
-import { QUEUES, type PipelineJobData } from '@/modules/queue/queue.constants';
+import { QUEUES,
+  WORKER_OPTIONS, type PipelineJobData } from '@/modules/queue/queue.constants';
 
 /** Stage 6. */
-@Processor(QUEUES.AGGREGATION)
+@Processor(QUEUES.AGGREGATION, WORKER_OPTIONS)
 export class AggregationProcessor extends WorkerHost {
   private readonly logger = new Logger(AggregationProcessor.name);
 

@@ -303,24 +303,106 @@ Web application, with redirect URI `http://localhost:3000/api/auth/google/callba
 
 ## Deploying
 
-The pieces are independent, so any host that runs a Node service will do.
+Everything below runs on a free plan. `render.yaml` provisions the API and Redis;
+the rest is created by hand once.
 
-| Piece | Suggested host | Notes |
+| Piece | Host | Free plan |
 |---|---|---|
-| Web | Vercel | Point `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` at the API |
-| API + workers | Railway, Render, Fly.io | Needs a persistent process; WebSockets must be allowed |
-| Postgres | Supabase, Neon | Must support the `vector` extension. Set `DIRECT_URL` to the non-pooled string |
-| Redis | Upstash | Use the `rediss://` URL |
-| Storage | Cloudflare R2 | Add a CORS rule allowing `PUT` from the web origin, or uploads are blocked |
+| Web | Vercel | Hobby |
+| API + workers | Render | Free web service |
+| Redis | Render Key Value | Free, 25 MB, no persistence |
+| Postgres | Neon | Free, includes `pgvector` |
+| Storage | Cloudflare R2 | 10 GB, no egress charges |
 
-Before going live: generate a fresh `AUTH_SECRET`, point `CORS_ORIGINS` at the real web
-origin, add the production callback URL to the Google OAuth client, and run
-`pnpm --filter @vedaai/database migrate:deploy`.
+### Two limits to accept before you start
 
-Workers currently run inside the API process. For heavier load, run a second instance of the
-same image with the HTTP listener disabled — no code changes needed.
+**A free Render service sleeps after 15 minutes idle** and takes about 50 seconds to
+wake. A grading job in flight stalls until something touches the service.
+`.github/workflows/keepalive.yml` pings `/health` every 10 minutes to prevent it. The
+free tier allows 750 instance-hours a month against 744 in a month, so exactly one
+service can stay awake — do not run a second.
 
----
+**Free Key Value has no persistence.** If Redis restarts mid-grading, queued jobs are
+lost. Uploaded files and marks already written survive, in R2 and Postgres; re-run the
+paper to finish it.
+
+### 1. Postgres
+
+Create a project at [neon.tech](https://neon.tech), then in the SQL editor:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+Copy both connection strings — the pooled one for `DATABASE_URL`, the direct one for
+`DIRECT_URL`. Prisma Migrate issues DDL a pooler cannot proxy, so they must differ.
+
+### 2. Storage
+
+Cloudflare dashboard → R2 → create bucket `vedaai-uploads`, then **Manage API Tokens**
+→ Object Read & Write. You need `S3_ENDPOINT="https://<ACCOUNT_ID>.r2.cloudflarestorage.com"`,
+the key pair, and `S3_FORCE_PATH_STYLE=false`.
+
+Add a CORS rule to the bucket or the browser upload is blocked. The web origin is not
+known until step 4, so come back and fill it in:
+
+```json
+[{ "AllowedOrigins": ["https://your-app.vercel.app"],
+   "AllowedMethods": ["PUT", "GET", "HEAD"],
+   "AllowedHeaders": ["*"],
+   "ExposeHeaders": ["ETag"] }]
+```
+
+### 3. API
+
+Render → **New → Blueprint** → pick this repository. It reads `render.yaml` and creates
+the web service and Redis. Fill in the variables marked `sync: false`: the two Neon
+strings, the five R2 values, and `GOOGLE_AI_API_KEY`. Leave `CORS_ORIGINS` until step 4.
+
+The build runs `migrate:deploy`, so the schema is applied on first deploy.
+
+### 4. Web
+
+Vercel → import the repository. It detects the monorepo; set **Root Directory** to
+`apps/web`. Environment variables:
+
+```
+NEXT_PUBLIC_API_URL   https://vedaai-api.onrender.com
+NEXT_PUBLIC_WS_URL    https://vedaai-api.onrender.com
+COOKIE_SAMESITE       none
+```
+
+`COOKIE_SAMESITE=none` is required here. `vercel.app` and `onrender.com` are different
+sites, so a `lax` cookie never reaches the API — you would sign in successfully and land
+back on the sign-in page. Because a `none` cookie rides along on any cross-site request,
+the API only honours it alongside an `X-VedaAI-Client` header, which a cross-site form or
+image cannot set. On your own domain (`app.example.com` + `api.example.com`) use `lax`
+instead and skip the exposure entirely.
+
+### 5. Wire the three together
+
+- Render → `CORS_ORIGINS` = your Vercel URL
+- R2 → CORS `AllowedOrigins` = your Vercel URL
+- GitHub → Settings → Secrets and variables → Actions → **Variables** → `API_URL` = your
+  Render URL, which turns the keep-alive on
+- Google OAuth (optional) → add `https://your-app.vercel.app/api/auth/google/callback`
+  as an authorised redirect URI, and set the two client variables on Vercel
+
+### 6. Check it
+
+```bash
+curl https://vedaai-api.onrender.com/api/v1/health      # {"status":"ok"}
+curl https://vedaai-api.onrender.com/api/v1/health/ai   # {"ok":true,...}
+```
+
+Then sign up on the Vercel URL and grade one paper end to end. First request after a
+quiet spell is slow while the instance wakes.
+
+### Scaling past free
+
+The first thing to outgrow is Render's sleep. A Starter instance removes it and the
+keep-alive workflow. After that, run a second instance of the same image with the HTTP
+listener disabled so workers scale separately from the API.
 
 ## Troubleshooting
 

@@ -51,3 +51,14 @@ export const DEFAULT_JOB_OPTIONS = {
   removeOnComplete: { age: 3600, count: 200 },
   removeOnFail: { age: 86_400 },
 };
+
+/**
+ * Worker tuning shared by every stage. Concurrency is deliberately low: workers
+ * spend their time waiting on the AI, not on CPU, and the provider's per-minute
+ * quota is the real ceiling. The slower stalled check keeps Redis command
+ * volume down on small plans; a stalled job is still recovered within minutes.
+ */
+export const WORKER_OPTIONS = {
+  concurrency: Number(process.env.WORKER_CONCURRENCY ?? 2),
+  stalledInterval: 120_000,
+};

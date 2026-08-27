@@ -8,13 +8,14 @@ import { AiEngineService } from '@/modules/ai-engine/ai-engine.service';
 import { ImageService } from '@/modules/ai-engine/image.service';
 import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
-import { QUEUES, type EvaluationJobData } from '@/modules/queue/queue.constants';
+import { QUEUES,
+  WORKER_OPTIONS, type EvaluationJobData } from '@/modules/queue/queue.constants';
 
 /** How many cropped regions to send per question — enough context, bounded cost. */
 const MAX_REGION_IMAGES = 3;
 
 /** Stage 5. */
-@Processor(QUEUES.EVALUATION)
+@Processor(QUEUES.EVALUATION, WORKER_OPTIONS)
 export class EvaluationProcessor extends WorkerHost {
   private readonly logger = new Logger(EvaluationProcessor.name);
 

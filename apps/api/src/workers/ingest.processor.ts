@@ -10,12 +10,13 @@ import {
   DEFAULT_JOB_OPTIONS,
   PIPELINE_FLOW,
   QUEUES,
+  WORKER_OPTIONS,
   type PageJobData,
   type PipelineJobData,
 } from '@/modules/queue/queue.constants';
 
 /** Stage 1. */
-@Processor(QUEUES.INGEST)
+@Processor(QUEUES.INGEST, WORKER_OPTIONS)
 export class IngestProcessor extends WorkerHost {
   private readonly logger = new Logger(IngestProcessor.name);
 

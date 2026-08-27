@@ -9,12 +9,13 @@ import {
   DEFAULT_JOB_OPTIONS,
   PIPELINE_FLOW,
   QUEUES,
+  WORKER_OPTIONS,
   type EvaluationJobData,
   type PipelineJobData,
 } from '@/modules/queue/queue.constants';
 
 /** Stage 4. */
-@Processor(QUEUES.MAPPING)
+@Processor(QUEUES.MAPPING, WORKER_OPTIONS)
 export class MappingProcessor extends WorkerHost {
   private readonly logger = new Logger(MappingProcessor.name);
 

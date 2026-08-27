@@ -8,10 +8,11 @@ import { AiEngineService } from '@/modules/ai-engine/ai-engine.service';
 import { ImageService } from '@/modules/ai-engine/image.service';
 import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
-import { QUEUES, type PipelineJobData } from '@/modules/queue/queue.constants';
+import { QUEUES,
+  WORKER_OPTIONS, type PipelineJobData } from '@/modules/queue/queue.constants';
 
 /** Stage 2. */
-@Processor(QUEUES.QUESTION_EXTRACTION)
+@Processor(QUEUES.QUESTION_EXTRACTION, WORKER_OPTIONS)
 export class QuestionExtractionProcessor extends WorkerHost {
   private readonly logger = new Logger(QuestionExtractionProcessor.name);
 

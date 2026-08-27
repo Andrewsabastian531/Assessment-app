@@ -6,10 +6,11 @@ import { StorageService } from '@/modules/storage/storage.service';
 import { AiEngineService } from '@/modules/ai-engine/ai-engine.service';
 import { EventsPublisher } from '@/modules/events/events.publisher';
 import { FailureReporter } from './failure-reporter.service';
-import { QUEUES, type PageJobData } from '@/modules/queue/queue.constants';
+import { QUEUES,
+  WORKER_OPTIONS, type PageJobData } from '@/modules/queue/queue.constants';
 
 /** Stage 3. */
-@Processor(QUEUES.LAYOUT_ANALYSIS)
+@Processor(QUEUES.LAYOUT_ANALYSIS, WORKER_OPTIONS)
 export class LayoutAnalysisProcessor extends WorkerHost {
   private readonly logger = new Logger(LayoutAnalysisProcessor.name);
 

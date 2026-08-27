@@ -1,0 +1,104 @@
+# Render blueprint. In the dashboard: New -> Blueprint -> pick this repo.
+#
+# Everything here is on a free plan. Two consequences worth knowing before you
+# rely on it:
+#
+#   * A free web service sleeps after 15 minutes without inbound traffic, and
+#     the next request waits ~50s while it wakes. The keep-alive workflow in
+#     .github/workflows/keepalive.yml pings it to avoid that. Free tier allows
+#     750 instance-hours a month and a month is 744, so exactly one service can
+#     stay awake around the clock.
+#   * Free Key Value has no persistence. If it restarts mid-grading the queued
+#     jobs are lost. The uploaded files and any marks already written survive,
+#     because those live in R2 and Postgres; re-run the paper to finish it.
+
+services:
+  - type: web
+    name: vedaai-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    # pnpm is not on the default image, and the API needs the workspace
+    # packages built before it can compile.
+    buildCommand: |
+      corepack enable
+      corepack prepare pnpm@9.15.9 --activate
+      pnpm install --frozen-lockfile
+      pnpm --filter @vedaai/shared build
+      pnpm --filter @vedaai/database build
+      pnpm --filter @vedaai/database migrate:deploy
+      pnpm --filter @vedaai/api build
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 10000
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: vedaai-redis
+          property: connectionString
+      # Everything below is set by hand in the dashboard.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      # vercel.app and onrender.com are different sites, so a lax cookie never
+      # reaches this service.
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_FORCE_PATH_STYLE
+        value: false
+      - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: AI_PROVIDER
+        value: google
+      - key: AI_VISION_MODEL
+        value: gemini-3.6-flash
+      - key: AI_GRADING_MODEL
+        value: gemini-3.6-flash
+      - key: EMBEDDING_PROVIDER
+        value: google
+      - key: EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: EMBEDDING_DIMENSIONS
+        value: 768
+      # A single free instance shares one quota with itself, so keep the
+      # ceiling low and let jobs take longer rather than fail.
+      - key: AI_REQUESTS_PER_MINUTE
+        value: 10
+      - key: WORKER_CONCURRENCY
+        value: 1
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+
+  - type: keyvalue
+    name: vedaai-redis
+    plan: free
+    region: singapore
+    # Only the API talks to it, and free instances have no public endpoint.
+    ipAllowList: []
+    maxmemoryPolicy: noeviction

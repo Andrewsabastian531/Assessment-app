@@ -30,7 +30,14 @@ function redisOptions(config: ConfigService) {
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({ connection: redisOptions(config) }),
+      useFactory: (config: ConfigService) => ({
+        connection: redisOptions(config),
+        defaultJobOptions: {
+          // Finished jobs are the bulk of what fills a 25MB instance.
+          removeOnComplete: { age: 1800, count: 50 },
+          removeOnFail: { age: 7200, count: 50 },
+        },
+      }),
     }),
     BullModule.registerQueue(...ALL_QUEUES.map((name) => ({ name }))),
     BullModule.registerFlowProducerAsync({
