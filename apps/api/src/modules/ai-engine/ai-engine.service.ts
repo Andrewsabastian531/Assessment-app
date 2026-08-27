@@ -117,16 +117,20 @@ export class AiEngineService implements OnModuleInit {
    */
   private async dispatch<T>(
     build: (entry: ProviderEntry) => VlmRequest<T>,
-  ): Promise<VlmResponse<T> & { providerName: string }> {
+  ): Promise<VlmResponse<T> & { providerName: string; modelUsed: string }> {
     let lastQuotaError: ProviderQuotaError | null = null;
 
     for (const [index, entry] of this.chain.entries()) {
       try {
-        const response = await entry.limiter.run(() => entry.provider.complete(build(entry)));
+        const request = build(entry);
+        const response = await entry.limiter.run(() => entry.provider.complete(request));
         if (index > 0) {
-          this.logger.log(`Served by fallback provider "${entry.provider.name}"`);
+          this.logger.warn(
+            `Served by fallback "${entry.provider.name}" (${request.model}). ` +
+              'A weaker fallback model produces noticeably worse grading.',
+          );
         }
-        return { ...response, providerName: entry.provider.name };
+        return { ...response, providerName: entry.provider.name, modelUsed: request.model };
       } catch (error) {
         if (!(error instanceof ProviderQuotaError)) throw error;
         lastQuotaError = error;
@@ -227,7 +231,7 @@ export class AiEngineService implements OnModuleInit {
     return {
       ...response.data,
       awardedMarks,
-      modelId: `${response.providerName}/${this.gradingModel}`,
+      modelId: `${response.providerName}/${response.modelUsed}`,
       inputTokens: response.inputTokens,
       outputTokens: response.outputTokens,
     };

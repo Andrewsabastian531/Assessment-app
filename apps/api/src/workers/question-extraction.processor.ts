@@ -53,10 +53,17 @@ export class QuestionExtractionProcessor extends WorkerHost {
     // A retry must not append a second copy of the rubric.
     await this.prisma.question.deleteMany({ where: { assessmentId } });
 
+    const unique = dedupe(result.questions);
+    if (unique.length !== result.questions.length) {
+      this.logger.warn(
+        `Extraction returned ${result.questions.length} questions, ${unique.length} distinct`,
+      );
+    }
+
     let orderIndex = 0;
     let created = 0;
 
-    for (const question of result.questions) {
+    for (const question of unique) {
       const parent = await this.createQuestion(assessmentId, question, null, orderIndex);
       orderIndex += 1;
       created += 1;
@@ -76,6 +83,13 @@ export class QuestionExtractionProcessor extends WorkerHost {
         });
         created += 1;
       }
+    }
+
+    if (created === 0) {
+      throw new Error(
+        'No questions could be read from the question paper. Check that the upload is ' +
+          'legible and right way up.',
+      );
     }
 
     if (result.detectedSubject || result.detectedGrade) {
@@ -133,4 +147,15 @@ export class QuestionExtractionProcessor extends WorkerHost {
   onFailed(job: Job<PipelineJobData>, error: Error) {
     void this.failures.report(job, error, 'QUESTION_EXTRACTION');
   }
+}
+
+/** Drops repeats keyed on the question text, which extraction occasionally emits twice. */
+function dedupe(questions: ExtractedQuestion[]): ExtractedQuestion[] {
+  const seen = new Set<string>();
+  return questions.filter((question) => {
+    const key = question.text.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Evaluation, ReviewPayload } from '@vedaai/shared';
 import { api } from '@/lib/api-client';
@@ -74,6 +74,11 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
   }
 
   const totals = summarise(data);
+  const graders = distinctGraders(data);
+  const unanswered = questions.filter((question) => {
+    const evaluation = evaluationByQuestion.get(question.id);
+    return !evaluation || evaluation.verdict === 'UNATTEMPTED';
+  }).length;
 
   return (
     <div className="flex h-full flex-col">
@@ -101,6 +106,20 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
             mobileTab === 'questions' ? 'flex' : 'hidden',
           )}
         >
+          {(graders.length > 1 || unanswered > questions.length / 2) && (
+            <div className="border-warning-600/20 bg-warning-100/60 flex items-start gap-2 border-b px-3 py-2">
+              <AlertTriangle className="text-warning-600 mt-px size-3.5 shrink-0" />
+              <p className="text-ink-700 text-[11.5px] leading-snug">
+                {graders.length > 1
+                  ? `Graded by more than one model (${graders.join(', ')}). A fallback model
+                     runs when the main one is rate limited and marks less reliably.`
+                  : `${unanswered} of ${questions.length} questions found no answer. If the
+                     student did answer them, the scan was probably read poorly — re-upload a
+                     clearer copy before trusting this total.`}
+              </p>
+            </div>
+          )}
+
           <header className="border-ink-200 flex h-11 shrink-0 items-center justify-between border-b px-3">
             <h2 className="text-ink-900 text-[12.5px] font-semibold">
               Extracted Questions{' '}
@@ -183,6 +202,17 @@ export function ReviewScreen({ submissionId }: { submissionId: string }) {
       </div>
     </div>
   );
+}
+
+/** Distinct models that produced these marks; more than one means a failover happened. */
+function distinctGraders(data: ReviewPayload): string[] {
+  return [
+    ...new Set(
+      data.evaluations
+        .map((evaluation) => evaluation.modelId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
 }
 
 function summarise(data: ReviewPayload) {

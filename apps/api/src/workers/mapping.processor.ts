@@ -51,6 +51,18 @@ export class MappingProcessor extends WorkerHost {
       },
     });
 
+    const handwriting = regions.filter((region) => !region.isPrintedLabel);
+
+    // A page that yields nothing was not read, and grading it anyway returns a
+    // confident zero for work the student actually did. Failing here is
+    // recoverable; a bogus score that looks legitimate is not.
+    if (handwriting.length === 0) {
+      throw new Error(
+        'No handwriting was detected on the answer sheet. The scan may be too faint, ' +
+          'rotated, or the wrong file.',
+      );
+    }
+
     const matches = await this.mapping.match(
       questions,
       regions.map((region) => ({
@@ -73,9 +85,26 @@ export class MappingProcessor extends WorkerHost {
       if (match.questionId) matched += 1;
     }
 
-    const unmatched =
-      questions.length -
-      new Set(matches.filter((match) => match.questionId).map((match) => match.questionId)).size;
+    const answered = new Set(
+      matches.filter((match) => match.questionId).map((match) => match.questionId),
+    ).size;
+    const unmatched = questions.length - answered;
+
+    if (answered === 0) {
+      throw new Error(
+        `Found ${handwriting.length} handwritten region(s) but could not match any of them ` +
+          `to the ${questions.length} extracted question(s). The question paper and answer ` +
+          'sheet may not belong to the same exam.',
+      );
+    }
+
+    // Some blanks are normal; almost all blank usually means the read failed.
+    if (answered < questions.length / 2) {
+      this.logger.warn(
+        `Only ${answered} of ${questions.length} questions matched an answer from ` +
+          `${handwriting.length} region(s). Review the unmatched ones before trusting the total.`,
+      );
+    }
 
     await this.prisma.assessment.update({
       where: { id: assessmentId },

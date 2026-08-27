@@ -40,9 +40,22 @@ export class MappingService {
       }));
     }
 
-    const byLabel = new Map(
-      questions.map((question) => [normalizeLabel(question.label), question.id]),
-    );
+    // Labels only help when they are distinct. Extraction occasionally returns
+    // the same placeholder for every question, in which case this pass is worse
+    // than useless and the semantic pass should decide on its own.
+    const normalized = questions.map((question) => normalizeLabel(question.label));
+    const labelsAreUsable =
+      new Set(normalized.filter(Boolean)).size === questions.length && questions.length > 0;
+
+    if (!labelsAreUsable && questions.length > 1) {
+      this.logger.warn(
+        'Extracted question labels are not distinct; matching on meaning alone',
+      );
+    }
+
+    const byLabel = labelsAreUsable
+      ? new Map(questions.map((question, index) => [normalized[index]!, question.id]))
+      : new Map<string, string>();
 
     const matches: RegionMatch[] = [];
     const needsSemantic: MappableRegion[] = [];
@@ -157,11 +170,17 @@ export class MappingService {
   }
 }
 
+/**
+ * "Q2", "Question 2" and "2." all reduce to "2". Prefix stripping is skipped when
+ * it would leave nothing: extraction sometimes emits the bare word "question" as
+ * a label, and collapsing those to "" would key every question to the same slot
+ * and match answers to whichever one happened to be inserted last.
+ */
 function normalizeLabel(label: string): string {
-  return label
-    .toLowerCase()
-    .replace(/^(question|ques|q|ans|answer)\s*/i, '')
-    .replace(/[^a-z0-9]/g, '');
+  const cleaned = label.trim().toLowerCase();
+  const stripped = cleaned.replace(/^(question|ques|q|ans|answer)[\s.:)-]*/i, '');
+  const chosen = stripped.trim() ? stripped : cleaned;
+  return chosen.replace(/[^a-z0-9ऀ-ॿ]/g, '');
 }
 
 export function cosineSimilarity(a: number[] | undefined, b: number[] | undefined): number {
