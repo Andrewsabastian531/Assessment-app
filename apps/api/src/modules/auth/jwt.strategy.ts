@@ -12,8 +12,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
-        // The web app keeps the token in an httpOnly cookie, so accept it there too.
-        (request) => request?.cookies?.['vedaai.token'] ?? null,
+        /*
+         * The cookie is accepted only alongside a header the browser will not
+         * attach on its own. With SameSite=none the cookie rides along on any
+         * cross-site request, so this is what stops a third-party page from
+         * driving an authenticated call. Forms and <img> cannot set headers,
+         * and an XHR that does triggers a preflight CORS rejects.
+         */
+        (request) =>
+          request?.headers?.['x-vedaai-client']
+            ? (request.cookies?.['vedaai.token'] ?? null)
+            : null,
       ]),
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('AUTH_SECRET'),

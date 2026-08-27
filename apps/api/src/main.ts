@@ -17,7 +17,11 @@ async function bootstrap() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  app.enableCors({ origin: origins, credentials: true });
+  app.enableCors({
+    origin: origins,
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-VedaAI-Client'],
+  });
   // The web app stores the API token in an httpOnly cookie, so the JWT strategy
   // needs request.cookies populated.
   app.use(cookieParser());

@@ -17,6 +17,8 @@ const envSchema = z.object({
       'AUTH_SECRET must be at least 16 characters — generate one with `openssl rand -base64 32`',
     ),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  COOKIE_SAMESITE: z.enum(['lax', 'none', 'strict']).default('lax'),
+  COOKIE_DOMAIN: z.string().default(''),
 
   S3_ENDPOINT: z.string().url(),
   S3_REGION: z.string().default('auto'),

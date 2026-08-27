@@ -31,6 +31,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      // Proves the request came from our own code, not a cross-site page.
+      // The API will not honour the session cookie without it.
+      'X-VedaAI-Client': 'web',
       ...init?.headers,
     },
   });

@@ -42,6 +42,7 @@ export function useJobProgress(jobId: string | null): JobProgressState {
       {
         transports: ['websocket'],
         withCredentials: true,
+        extraHeaders: { 'X-VedaAI-Client': 'web' },
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       },
