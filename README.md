@@ -165,10 +165,44 @@ packages/
 
 ### The AI layer is swappable
 
-`AI_PROVIDER` selects between Google, OpenRouter, OpenCode Zen, OpenAI and Ollama. Every
-model call goes through one interface, so changing provider is an environment change, never
-a code change. The only hard requirements are **image input** and **structured JSON output**
-— not every free model has both, which is why `/health/ai` exists.
+`AI_PROVIDER` selects between Google, Groq, OpenRouter, OpenCode Zen, OpenAI and Ollama.
+Every model call goes through one interface, so changing provider is an environment change,
+never a code change. The only hard requirements are **image input** and **structured JSON
+output** — not every free model has both, which is why `/health/ai` exists.
+
+### Staying inside a free-tier quota
+
+The pipeline fans out, so a single paper can fire a dozen model requests within a few
+seconds. Free tiers count requests per *minute*, which a burst like that exhausts almost
+immediately. Two mechanisms keep it inside the budget:
+
+**Rate limiting.** `AI_REQUESTS_PER_MINUTE` (default 12) spaces requests to one provider at
+a fixed interval, regardless of how many workers are queued behind it. Concurrency alone
+cannot do this — the quota is counted per account, not per worker.
+
+**Failover.** `AI_FALLBACK_PROVIDERS` is an ordered list tried when the one before reports a
+quota failure:
+
+```bash
+AI_PROVIDER="google"
+AI_FALLBACK_PROVIDERS="groq"
+```
+
+Only a genuine rate limit triggers the switch. A malformed request fails on every provider,
+so retrying it elsewhere would waste another quota for the same outcome.
+
+When a provider does return 429, the app reads the retry hint it sends — Gemini's
+`retryDelay`, or a `Retry-After` header — and parks that provider's queue for exactly that
+long instead of guessing with exponential backoff.
+
+If your quota is tight, lower `AI_REQUESTS_PER_MINUTE` and `WORKER_CONCURRENCY` together.
+Grading takes longer but finishes rather than failing halfway.
+
+> **Before relying on a second provider, check the model can do the job.** Groq is fast and
+> has a free tier, but its catalogue mixes text-only and multimodal models, and JSON-schema
+> support varies between them. Set the key, point `AI_PROVIDER` at it temporarily, and run
+> `curl localhost:4000/api/v1/health/ai` plus one real upload before trusting it as a
+> fallback. A text-only model will pass a health check and then fail on the first page image.
 
 ---
 

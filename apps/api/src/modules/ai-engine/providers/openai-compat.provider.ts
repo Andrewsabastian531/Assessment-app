@@ -1,6 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { toJsonSchema } from './json-schema.util';
-import type { VlmProvider, VlmRequest, VlmResponse } from './vlm-provider.interface';
+import {
+  ProviderQuotaError,
+  type VlmProvider,
+  type VlmRequest,
+  type VlmResponse,
+} from './vlm-provider.interface';
 
 interface ChatResponse {
   choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
@@ -22,6 +27,7 @@ export class OpenAiCompatProvider implements VlmProvider {
     private readonly timeoutMs: number,
     private readonly maxRetries: number,
     private readonly extraHeaders: Record<string, string> = {},
+    private readonly onRateLimit?: (retryAfterMs: number) => void,
   ) {}
 
   async complete<T>(request: VlmRequest<T>): Promise<VlmResponse<T>> {
@@ -117,17 +123,34 @@ export class OpenAiCompatProvider implements VlmProvider {
 
         if (!response.ok || payload.error) {
           const message = payload.error?.message ?? response.statusText;
-          if ((response.status === 429 || response.status >= 500) && attempt < this.maxRetries) {
+
+          if (response.status === 429) {
+            // Most gateways send Retry-After; Groq also sends x-ratelimit-reset.
+            const header =
+              response.headers.get('retry-after') ??
+              response.headers.get('x-ratelimit-reset-requests');
+            const retryAfterMs = parseRetryAfter(header);
+            this.onRateLimit?.(retryAfterMs ?? 60_000);
+            throw new ProviderQuotaError(
+              `${this.name} quota exceeded: ${message}`,
+              this.name,
+              retryAfterMs,
+            );
+          }
+
+          if (response.status >= 500 && attempt < this.maxRetries) {
             const delay = 2 ** attempt * 1500;
             this.logger.warn(`${this.name} ${response.status}; retrying in ${delay}ms`);
             await sleep(delay);
             continue;
           }
+
           throw new Error(`${this.name} request failed (${response.status}): ${message}`);
         }
 
         return payload;
       } catch (error) {
+        if (error instanceof ProviderQuotaError) throw error;
         lastError = error as Error;
         if (attempt >= this.maxRetries) break;
         await sleep(2 ** attempt * 1500);
@@ -151,3 +174,14 @@ function stripCodeFence(text: string): string {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Accepts either seconds ("30") or a duration ("1m30s", "2.5s"). */
+function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  if (/^[\d.]+$/.test(value.trim())) return Math.ceil(Number(value) * 1000);
+  const match = /(?:([\d.]+)m)?(?:([\d.]+)s)?/.exec(value.trim());
+  const minutes = Number(match?.[1] ?? 0);
+  const seconds = Number(match?.[2] ?? 0);
+  const total = minutes * 60 + seconds;
+  return total > 0 ? Math.ceil(total * 1000) : null;
+}

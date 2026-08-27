@@ -30,14 +30,19 @@ const envSchema = z.object({
   S3_PUBLIC_URL: z.string().url(),
 
   AI_PROVIDER: z
-    .enum(['google', 'openrouter', 'opencode-zen', 'anthropic', 'openai', 'ollama'])
+    .enum(['google', 'groq', 'openrouter', 'opencode-zen', 'anthropic', 'openai', 'ollama'])
     .default('google'),
   AI_VISION_MODEL: z.string().default('gemini-2.0-flash'),
   AI_GRADING_MODEL: z.string().default('gemini-2.0-flash'),
   AI_MAX_RETRIES: z.coerce.number().int().min(0).default(3),
+  /** Comma-separated providers to try when the primary reports a quota failure. */
+  AI_FALLBACK_PROVIDERS: z.string().default(''),
+  /** Per-provider ceiling. Keep it under the smallest free-tier quota in the chain. */
+  AI_REQUESTS_PER_MINUTE: z.coerce.number().int().positive().default(12),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   GOOGLE_AI_API_KEY: z.string().default(''),
+  GROQ_API_KEY: z.string().default(''),
   OPENROUTER_API_KEY: z.string().default(''),
   OPENROUTER_BASE_URL: z.string().default('https://openrouter.ai/api/v1'),
   OPENCODE_ZEN_API_KEY: z.string().default(''),

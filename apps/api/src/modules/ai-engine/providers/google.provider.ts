@@ -1,6 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { toGeminiSchema } from './json-schema.util';
-import type { VlmProvider, VlmRequest, VlmResponse } from './vlm-provider.interface';
+import {
+  ProviderQuotaError,
+  type VlmProvider,
+  type VlmRequest,
+  type VlmResponse,
+} from './vlm-provider.interface';
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -23,6 +28,8 @@ export class GoogleVlmProvider implements VlmProvider {
     private readonly timeoutMs: number,
     private readonly maxRetries: number,
     private readonly embeddingDimensions: number,
+    /** Lets the engine park its queue for as long as Gemini asks. */
+    private readonly onRateLimit?: (retryAfterMs: number) => void,
   ) {}
 
   async complete<T>(request: VlmRequest<T>): Promise<VlmResponse<T>> {
@@ -128,25 +135,37 @@ export class GoogleVlmProvider implements VlmProvider {
         });
 
         const payload = (await response.json()) as T & {
-          error?: { message?: string; status?: string };
+          error?: { message?: string; status?: string; details?: unknown[] };
         };
 
         if (!response.ok || payload.error) {
           const message = payload.error?.message ?? response.statusText;
-          const retryable = response.status === 429 || response.status >= 500;
-          if (retryable && attempt < this.maxRetries) {
-            const delay = 2 ** attempt * 1500;
-            this.logger.warn(
-              `Gemini ${response.status} on ${path}; retrying in ${delay}ms — ${message}`,
+
+          if (response.status === 429) {
+            // Gemini states how long to wait. Guessing with backoff either wastes
+            // time or spends another request against a quota already exhausted.
+            const retryAfterMs = parseRetryDelay(payload.error?.details);
+            this.onRateLimit?.(retryAfterMs ?? 60_000);
+            throw new ProviderQuotaError(
+              `Gemini quota exceeded: ${message}`,
+              this.name,
+              retryAfterMs,
             );
+          }
+
+          if (response.status >= 500 && attempt < this.maxRetries) {
+            const delay = 2 ** attempt * 1500;
+            this.logger.warn(`Gemini ${response.status} on ${path}; retrying in ${delay}ms`);
             await sleep(delay);
             continue;
           }
+
           throw new Error(`Gemini request failed (${response.status}): ${message}`);
         }
 
         return payload;
       } catch (error) {
+        if (error instanceof ProviderQuotaError) throw error;
         lastError = error as Error;
         const aborted = lastError.name === 'AbortError';
         if (attempt >= this.maxRetries) break;
@@ -162,3 +181,13 @@ export class GoogleVlmProvider implements VlmProvider {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Reads the RetryInfo Gemini attaches to a 429, e.g. { retryDelay: "14.09s" }. */
+function parseRetryDelay(details: unknown[] | undefined): number | null {
+  for (const entry of details ?? []) {
+    const delay = (entry as { retryDelay?: string })?.retryDelay;
+    const seconds = delay && /^([\d.]+)s$/.exec(delay)?.[1];
+    if (seconds) return Math.ceil(Number(seconds) * 1000);
+  }
+  return null;
+}
