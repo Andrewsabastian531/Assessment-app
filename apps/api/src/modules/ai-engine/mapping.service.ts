@@ -96,10 +96,12 @@ export class MappingService {
       const questionTexts = questions.map((question) => `${question.label}. ${question.text}`);
       const regionTexts = regions.map((region) => region.transcript);
 
-      const [questionVectors, regionVectors] = await Promise.all([
-        this.ai.embed(questionTexts),
-        this.ai.embed(regionTexts),
-      ]);
+      // Embedded in one call so both halves come from the same model. Two calls
+      // could land on different providers mid-failover, and comparing vectors
+      // from unrelated spaces yields meaningless similarities.
+      const vectors = await this.ai.embed([...questionTexts, ...regionTexts]);
+      const questionVectors = vectors.slice(0, questionTexts.length);
+      const regionVectors = vectors.slice(questionTexts.length);
 
       return regions.map((region, regionIndex) => {
         const regionVector = regionVectors[regionIndex];

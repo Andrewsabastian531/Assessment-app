@@ -185,8 +185,16 @@ quota failure:
 
 ```bash
 AI_PROVIDER="google"
-AI_FALLBACK_PROVIDERS="groq"
+AI_FALLBACK_PROVIDERS="openrouter"
+
+# A fallback needs its own model ids - the primary's mean nothing elsewhere.
+OPENROUTER_VISION_MODEL="dots-studio/dots-3-note-preview:free"
+OPENROUTER_GRADING_MODEL="dots-studio/dots-3-note-preview:free"
+OPENROUTER_EMBEDDING_MODEL="openai/text-embedding-3-small"
 ```
+
+`GET /health/ai` reports which provider actually served, plus the whole chain, so a
+silent failover is visible rather than guessed at.
 
 Only a genuine rate limit triggers the switch. A malformed request fails on every provider,
 so retrying it elsewhere would waste another quota for the same outcome.
@@ -198,11 +206,13 @@ long instead of guessing with exponential backoff.
 If your quota is tight, lower `AI_REQUESTS_PER_MINUTE` and `WORKER_CONCURRENCY` together.
 Grading takes longer but finishes rather than failing halfway.
 
-> **Before relying on a second provider, check the model can do the job.** Groq is fast and
-> has a free tier, but its catalogue mixes text-only and multimodal models, and JSON-schema
-> support varies between them. Set the key, point `AI_PROVIDER` at it temporarily, and run
-> `curl localhost:4000/api/v1/health/ai` plus one real upload before trusting it as a
-> fallback. A text-only model will pass a health check and then fail on the first page image.
+> **Check a model can do the job before relying on it.** Most free models are text-only, and
+> JSON-schema support varies even among the multimodal ones. A text-only model passes the
+> health check — which only exercises embeddings — and then fails on the first page image.
+> Point `AI_PROVIDER` at the candidate temporarily and run one real upload end to end.
+>
+> On OpenRouter, these free models were verified to handle an image *and* return
+> schema-valid JSON: `dots-studio/dots-3-note-preview:free` and `openrouter/free`.
 
 ---
 

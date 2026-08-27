@@ -40,6 +40,14 @@ export interface GradeAnswerInput {
   images: VlmImage[];
 }
 
+interface ProviderEntry {
+  provider: VlmProvider;
+  limiter: RateLimiter;
+  visionModel: string;
+  gradingModel: string;
+  embeddingModel: string;
+}
+
 export interface GradeAnswerOutput extends GradingResult {
   modelId: string;
   inputTokens: number | null;
@@ -49,7 +57,7 @@ export interface GradeAnswerOutput extends GradingResult {
 @Injectable()
 export class AiEngineService implements OnModuleInit {
   private readonly logger = new Logger(AiEngineService.name);
-  private chain: Array<{ provider: VlmProvider; limiter: RateLimiter }> = [];
+  private chain: ProviderEntry[] = [];
 
   constructor(private readonly config: ConfigService) {}
 
@@ -58,16 +66,25 @@ export class AiEngineService implements OnModuleInit {
 
     this.chain = this.providerNames().map((name) => {
       const limiter = new RateLimiter(name, perMinute);
+      const prefix = name.replace(/-/g, '_').toUpperCase();
       return {
         provider: this.buildProvider(name, (ms) => limiter.pauseFor(ms)),
         limiter,
+        // Model names are provider-specific. A fallback would be sent a model
+        // id the primary understands and it does not, so each entry resolves
+        // its own, falling back to the global default.
+        visionModel: this.config.get<string>(`${prefix}_VISION_MODEL`, '') || this.visionModel,
+        gradingModel: this.config.get<string>(`${prefix}_GRADING_MODEL`, '') || this.gradingModel,
+        embeddingModel:
+          this.config.get<string>(`${prefix}_EMBEDDING_MODEL`, '') ||
+          this.config.get<string>('EMBEDDING_MODEL', 'gemini-embedding-001'),
       };
     });
 
-    const names = this.chain.map((entry) => entry.provider.name).join(' -> ');
-    this.logger.log(
-      `AI providers: ${names} | vision ${this.visionModel} | grading ${this.gradingModel} | ${perMinute} req/min each`,
-    );
+    const summary = this.chain
+      .map((entry) => `${entry.provider.name}(${entry.gradingModel})`)
+      .join(' -> ');
+    this.logger.log(`AI providers: ${summary} | ${perMinute} req/min each`);
 
     if (!this.hasCredentials()) {
       this.logger.warn(
@@ -99,15 +116,13 @@ export class AiEngineService implements OnModuleInit {
    * error is the request's own fault and would fail identically elsewhere.
    */
   private async dispatch<T>(
-    build: (provider: VlmProvider) => VlmRequest<T>,
+    build: (entry: ProviderEntry) => VlmRequest<T>,
   ): Promise<VlmResponse<T> & { providerName: string }> {
     let lastQuotaError: ProviderQuotaError | null = null;
 
     for (const [index, entry] of this.chain.entries()) {
       try {
-        const response = await entry.limiter.run(() =>
-          entry.provider.complete(build(entry.provider)),
-        );
+        const response = await entry.limiter.run(() => entry.provider.complete(build(entry)));
         if (index > 0) {
           this.logger.log(`Served by fallback provider "${entry.provider.name}"`);
         }
@@ -153,8 +168,8 @@ export class AiEngineService implements OnModuleInit {
 
   /** Question paper pages → structured, editable rubric. */
   async extractQuestions(pages: VlmImage[]): Promise<QuestionExtractionResult> {
-    const response = await this.dispatch(() => ({
-      model: this.gradingModel,
+    const response = await this.dispatch((entry) => ({
+      model: entry.gradingModel,
       system: QUESTION_EXTRACTION_SYSTEM,
       prompt: questionExtractionPrompt(pages.length),
       images: pages,
@@ -174,8 +189,8 @@ export class AiEngineService implements OnModuleInit {
     pageIndex: number,
     totalPages: number,
   ): Promise<LayoutAnalysisResult> {
-    const response = await this.dispatch(() => ({
-      model: this.visionModel,
+    const response = await this.dispatch((entry) => ({
+      model: entry.visionModel,
       system: LAYOUT_ANALYSIS_SYSTEM,
       prompt: layoutAnalysisPrompt(pageIndex, totalPages),
       images: [page],
@@ -191,8 +206,8 @@ export class AiEngineService implements OnModuleInit {
   async gradeAnswer(input: GradeAnswerInput): Promise<GradeAnswerOutput> {
     const system = `${GRADING_SYSTEM}\n\n${TYPE_GUIDANCE[input.type]}`;
 
-    const response = await this.dispatch(() => ({
-      model: this.gradingModel,
+    const response = await this.dispatch((entry) => ({
+      model: entry.gradingModel,
       system,
       prompt: gradingPrompt({ ...input, hasImages: input.images.length > 0 }),
       images: input.images,
@@ -218,14 +233,30 @@ export class AiEngineService implements OnModuleInit {
     };
   }
 
+  /**
+   * One call embeds the whole batch through a single provider, so every vector
+   * compared later comes from the same model. Mixing two models would compare
+   * points in unrelated spaces and silently produce nonsense similarities.
+   */
   async embed(texts: string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
-    const model = this.config.get<string>('EMBEDDING_MODEL', 'gemini-embedding-001');
+    return (await this.embedWithProvider(texts)).vectors;
+  }
+
+  private async embedWithProvider(
+    texts: string[],
+  ): Promise<{ vectors: number[][]; providerName: string; model: string }> {
+    if (texts.length === 0) {
+      const first = this.chain[0];
+      return { vectors: [], providerName: first?.provider.name ?? 'none', model: '' };
+    }
 
     let lastQuotaError: ProviderQuotaError | null = null;
     for (const entry of this.chain) {
       try {
-        return await entry.limiter.run(() => entry.provider.embed(texts, model));
+        const vectors = await entry.limiter.run(() =>
+          entry.provider.embed(texts, entry.embeddingModel),
+        );
+        return { vectors, providerName: entry.provider.name, model: entry.embeddingModel };
       } catch (error) {
         if (!(error instanceof ProviderQuotaError)) throw error;
         lastQuotaError = error;
@@ -235,15 +266,27 @@ export class AiEngineService implements OnModuleInit {
   }
 
   /** Cheap liveness probe used by /health — confirms the model actually answers. */
-  async ping(): Promise<{ ok: boolean; provider: string; model: string; error?: string }> {
+  /**
+   * Confirms a model actually answers. Reports the provider that served it, which
+   * is not necessarily the primary once a failover has happened.
+   */
+  async ping(): Promise<{
+    ok: boolean;
+    provider: string;
+    model: string;
+    chain: string[];
+    error?: string;
+  }> {
+    const chain = this.chain.map((entry) => entry.provider.name);
     try {
-      await this.embed(['ping']);
-      return { ok: true, provider: this.provider.name, model: this.gradingModel };
+      const result = await this.embedWithProvider(['ping']);
+      return { ok: true, provider: result.providerName, model: result.model, chain };
     } catch (error) {
       return {
         ok: false,
         provider: this.provider.name,
         model: this.gradingModel,
+        chain,
         error: (error as Error).message,
       };
     }
