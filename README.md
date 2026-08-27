@@ -436,6 +436,13 @@ delete `apps/web/.next`, start again.
 Windows will not rename an open file. Run `pnpm stop` first. The build skips generation when
 the schema is unchanged, so this only appears after an actual schema edit.
 
+**Uploads fail with "blocked by CORS policy" but sign-in works.** Sign-in goes through
+a Next route handler server-side, so it never touches CORS; the upload calls the API
+straight from the browser and does. Set `CORS_ORIGINS` on the API to the exact web
+origin — scheme included, no trailing slash, no path. `https://*.vercel.app` is accepted
+to cover preview deployments. The API logs its allowed list at boot and warns with the
+rejected origin on every blocked request, so the Render log will tell you what it saw.
+
 **Render build fails with `nest: not found`, `dotenv: not found`, or a missing
 `@vedaai/typescript-config`.** Render sets `NODE_ENV=production`, and pnpm then skips
 devDependencies — which is where TypeScript, Prisma, the Nest CLI and the shared tsconfig

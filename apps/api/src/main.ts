@@ -12,13 +12,29 @@ async function bootstrap() {
     bufferLogs: false,
   });
 
+  // A browser never sends a trailing slash in Origin, so "https://x.app/" in
+  // config would silently match nothing. Entries may use one leading wildcard
+  // ("https://*.vercel.app") to cover preview deployments.
   const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
     .filter(Boolean);
 
+  const isAllowed = (origin: string) =>
+    origins.some((allowed) =>
+      allowed.includes('*')
+        ? new RegExp(`^${allowed.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^.]+')}$`).test(origin)
+        : allowed === origin,
+    );
+
   app.enableCors({
-    origin: origins,
+    origin: (origin, callback) => {
+      // No Origin header means a same-origin or server-side call (curl, health
+      // checks); those are not subject to CORS.
+      if (!origin || isAllowed(origin)) return callback(null, true);
+      logger.warn(`Blocked CORS request from "${origin}". CORS_ORIGINS = ${origins.join(', ') || '(empty)'}`);
+      return callback(null, false);
+    },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-VedaAI-Client'],
   });
@@ -36,8 +52,8 @@ async function bootstrap() {
   const port = Number(process.env.API_PORT ?? 4000);
   await app.listen(port, '0.0.0.0');
 
-  logger.log(`API listening on http://localhost:${port}/api/v1`);
-  logger.log(`WebSocket namespace /events accepting ${origins.join(', ')}`);
+  logger.log(`API listening on port ${port} under /api/v1`);
+  logger.log(`CORS allows: ${origins.join(', ') || '(nothing configured)'}`);
 }
 
 void bootstrap();
