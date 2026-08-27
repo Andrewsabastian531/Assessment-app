@@ -424,6 +424,15 @@ delete `apps/web/.next`, start again.
 Windows will not rename an open file. Run `pnpm stop` first. The build skips generation when
 the schema is unchanged, so this only appears after an actual schema edit.
 
+**Render build fails with `nest: not found`, `dotenv: not found`, or a missing
+`@vedaai/typescript-config`.** Render sets `NODE_ENV=production`, and pnpm then skips
+devDependencies — which is where TypeScript, Prisma, the Nest CLI and the shared tsconfig
+live. The build command passes `--prod=false` for exactly this reason; if you edited it,
+put that back.
+
+**Render build fails on `corepack enable` with `EROFS`.** `/usr/bin` is read-only there,
+so corepack cannot install its shim. Use `npm install -g pnpm@<version>` instead.
+
 **Grading fails but uploads work.** Check `GET /api/v1/health/ai` — usually a missing key, or
 a model that does not accept images.
 

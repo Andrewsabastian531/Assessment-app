@@ -23,8 +23,27 @@ if (!force && previousHash === schemaHash) {
 
 // Invoke Prisma's JS entrypoint with the current Node binary rather than the `prisma`
 // shim.
+// Resolve through package.json rather than a hardcoded build path: the entry
+// point moves between Prisma versions and install layouts.
 const require = createRequire(import.meta.url);
-const prismaEntry = require.resolve('prisma/build/index.js');
+function resolvePrisma() {
+  for (const candidate of ['prisma/build/index.js', 'prisma/package.json']) {
+    try {
+      const resolved = require.resolve(candidate);
+      return candidate.endsWith('package.json')
+        ? join(dirname(resolved), 'build', 'index.js')
+        : resolved;
+    } catch {
+      // try the next shape
+    }
+  }
+  throw new Error(
+    'Could not find the prisma CLI. Run an install that includes devDependencies ' +
+      '(pnpm install --prod=false).',
+  );
+}
+
+const prismaEntry = resolvePrisma();
 
 const result = spawnSync(process.execPath, [prismaEntry, 'generate'], {
   stdio: 'inherit',

@@ -22,9 +22,13 @@ services:
     # pnpm is not on the default image, and the API needs the workspace
     # packages built before it can compile.
     buildCommand: |
-      corepack enable
-      corepack prepare pnpm@9.15.9 --activate
-      pnpm install --frozen-lockfile
+      set -e
+      # corepack cannot write its shim here: /usr/bin is read-only on Render.
+      npm install -g pnpm@9.15.9
+      # Render sets NODE_ENV=production, and pnpm then skips devDependencies.
+      # The build needs several of them - typescript, prisma, the Nest CLI and
+      # the shared tsconfig package - so ask for them explicitly.
+      pnpm install --frozen-lockfile --prod=false
       pnpm --filter @vedaai/shared build
       pnpm --filter @vedaai/database build
       pnpm --filter @vedaai/database migrate:deploy
