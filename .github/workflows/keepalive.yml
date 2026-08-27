@@ -5,9 +5,10 @@ name: Keep API awake
 # stalls until something touches the service again. This pings the health
 # endpoint often enough to stay under that window.
 #
-# Set the API_URL repository variable (Settings -> Secrets and variables ->
+# Set an API_URL repository variable (Settings -> Secrets and variables ->
 # Actions -> Variables) to the Render URL, e.g. https://vedaai-api.onrender.com
-# Without it the job exits quietly rather than failing every run.
+# KEEPALIVE is accepted as an alias. Without either the job exits quietly
+# rather than failing every ten minutes.
 
 on:
   schedule:
@@ -21,12 +22,14 @@ jobs:
     steps:
       - name: Ping /health
         env:
-          API_URL: ${{ vars.API_URL }}
+          # Either name works, and a trailing slash is tolerated.
+          API_URL: ${{ vars.API_URL || vars.KEEPALIVE }}
         run: |
           if [ -z "$API_URL" ]; then
-            echo "API_URL variable is not set; nothing to ping."
+            echo "Set an API_URL repository variable to enable this."
             exit 0
           fi
+          API_URL="${API_URL%/}"
 
           # A sleeping instance can take most of a minute to answer, so allow
           # for that before deciding the service is actually down.
